@@ -1,2 +1,3 @@
-# behs-simulation-model
-A simulation model for Battery-less Energy Harvesting Systems.
+# BEHS Simulation Model
+
+A Python-based simulation model for Battery-less Energy Harvesting Systems.
