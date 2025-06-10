@@ -1,34 +1,23 @@
 # BEHS Simulation Model
 
-A Python-based simulation model for Battery-less Energy Harvesting Systems.
+A Python-based simulation model for Battery-less Energy Harvesting Systems (BEHSs).
 
-# Modules
+## Description
 
-## Energy Storage
+This model may be used to simulate and trace the energy flowing across the BEHS over time. 
 
-The **Energy Storage** module (`energy_storage.py`) defines the `EnergyStorage` class, which simulates an energy storage component for Battery-less Energy Harvesting Systems (BEHS).
+Given a group of pre-configured input parameters (i.e. input energy profile and energy storage architecture), we can compute the energy consumption of the system over an established time period.
 
-Its class methods include:
+The [Jupyter Notebook](Model.ipynb) present in this repository further explains the simulation model and features complete usage examples for this project.
 
-- `charge(number)` - Adds energy to storage.
-- `discharge(amount)` - Removes energy from storage.
-- `get_energy_level` - Get currently stored energy.
-- `get_capacity` - Get maximum storage capacity.
+## Getting Started
 
-### Usage
+The `Makefile` contains all necessary commands for installing dependencies and running the simulation.
 
-```python
-from src.energy_storage import EnergyStorage
-
-# Create an energy storage with a capacity of 100 units
-storage = EnergyStorage(capacity=100)
-
-# Add energy
-storage.charge(20)
-
-# Remove energy
-storage.discharge(10)
-
-# Check current energy level
-print("current storage: %d" % storage.get_energy_level()) 
+```sh
+make lint    # Run pylint for linting the code
+make test    # Run pytest for testing
+make install # Install dependencies from requirements.txt
+make run     # Run the simulation
+make clean   # Clean up all cache files
 ```
