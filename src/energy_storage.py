@@ -3,7 +3,7 @@ class EnergyStorage:
 		self.capacity = capacity
 		self.current_charge = 0
 
-	def get_current_charge(self):
+	def get_energy_level(self):
 		return self.current_charge
 	
 	def get_capacity(self):
