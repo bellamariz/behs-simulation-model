@@ -12,7 +12,7 @@ Its class methods include:
 
 - `charge(number)` - Adds energy to storage.
 - `discharge(amount)` - Removes energy from storage.
-- `get_current_charge` - Get current stored energy.
+- `get_energy_level` - Get currently stored energy.
 - `get_capacity` - Get maximum storage capacity.
 
 ### Usage
