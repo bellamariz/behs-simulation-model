@@ -12,7 +12,7 @@ def main():
     storage.discharge(10)
 
     # Check current energy level
-    print("current storage: %d" % storage.get_energy_level())
+    print(f"current storage: {storage.get_energy_level()}")
 
 
 if __name__ == "__main__":
