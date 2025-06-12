@@ -5,7 +5,7 @@ from src.energy_storage import EnergyStorage
 class TestEnergyStorage(unittest.TestCase):
 
     def setUp(self):
-        self.storage = EnergyStorage(Vmax=300, Vin=10)
+        self.storage = EnergyStorage(vmax=300, vin=10)
 
     def test_init(self):
         self.assertEqual(self.storage.status, "empty")
