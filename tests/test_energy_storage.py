@@ -5,32 +5,15 @@ from src.energy_storage import EnergyStorage
 class TestEnergyStorage(unittest.TestCase):
 
     def setUp(self):
-        self.storage = EnergyStorage(capacity=100)
+        self.storage = EnergyStorage(Vmax=300, Vin=10)
 
-    def test_charge(self):
-        self.storage.charge(50)
-        self.assertEqual(self.storage.current_charge, 50)
-
-        self.storage.charge(60)  # Exceeding capacity
-        self.assertEqual(self.storage.current_charge, 100)
-
-    def test_discharge(self):
-        self.storage.charge(80)
-        retrieved = self.storage.discharge(30)
-        self.assertEqual(retrieved, 30)
-        self.assertEqual(self.storage.current_charge, 50)
-
-        # Trying to retrieve more than available
-        retrieved = self.storage.discharge(100)
-        self.assertEqual(retrieved, 50)
-        self.assertEqual(self.storage.current_charge, 0)
-
-    def test_get_energy_level(self):
-        self.storage.charge(40)
-        self.assertEqual(self.storage.get_energy_level(), 40)
-
-        self.storage.discharge(20)
-        self.assertEqual(self.storage.get_energy_level(), 20)
+    def test_init(self):
+        self.assertEqual(self.storage.status, "empty")
+        self.assertEqual(self.storage.max_voltage, 300)
+        self.assertEqual(self.storage.voltage, 0)
+        self.assertEqual(self.storage.current, 0.004)
+        self.assertEqual(self.storage.charge, 0)
+        self.assertEqual(self.storage.energy, 0)
 
 
 if __name__ == '__main__':
