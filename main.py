@@ -1,18 +1,24 @@
 from src.energy_storage import EnergyStorage
+import time
 
 
 def main():
-    # Create an energy storage with a capacity of 100 units
-    storage = EnergyStorage(capacity=100)
+    # create energy storage of maximum voltage Vmax of 300V
+    # considering an initial voltage supply Vin of 10V
+    storage = EnergyStorage(Vmax=300, Vin=10)
 
-    # Add energy
-    storage.charge(20)
+    t_vector = [0.25, 0.5, 0.750, 1, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75,
+                3, 3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75, 5, 5.25, 5.5, 5.75, 6]
+    status_vector = ["charging"] * 25
 
-    # Remove energy
-    storage.discharge(10)
+    storage.print(0)
 
-    # Check current energy level
-    print(f"current storage: {storage.get_energy_level()}")
+    for i, _ in enumerate(t_vector):
+        storage.refresh_energy_storage(
+            t=t_vector[i], Vin=10, status=status_vector[i]
+        )
+        storage.print(t_vector[i])
+        time.sleep(1)
 
 
 if __name__ == "__main__":
