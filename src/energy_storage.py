@@ -1,4 +1,5 @@
 import math
+import random
 
 
 class EnergyStorage:  # considering a simple RC circuit
@@ -66,3 +67,8 @@ class EnergyStorage:  # considering a simple RC circuit
             f"charge={self.charge:.5f}C,"
             f"energy={self.energy:.5f}J\n"
         )
+
+    def generate_status_vector(t_vector):
+        statuses = ["empty", "charging", "discharging", "full"]
+        return [random.choice(statuses)
+                for _ in range(len(t_vector))]
