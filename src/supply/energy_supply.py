@@ -19,6 +19,12 @@ class EnergySupply(ABC):
     MAX_SUPPLY_VOLTAGE = 10  # assumes max supply voltage of 10V
 
     @abstractmethod
+    def __init__(self):
+        self.type: str
+        self.voltage: float
+        self.profile: list[float]
+
+    @abstractmethod
     def refresh(self, t_index: int) -> None:
         self.voltage = self.profile[t_index]
 

@@ -6,6 +6,13 @@ from abc import ABC, abstractmethod
 
 class EnergyStorage(ABC):
     @abstractmethod
+    def __init__(self):
+        self.type: str
+        self.voltage: float
+        self.current: float
+        self.energy: float
+
+    @abstractmethod
     def calculate_voltage(self, t_time: int, v_supply: float) -> float:
         pass
 

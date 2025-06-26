@@ -1,7 +1,7 @@
+from time import sleep
 from src.storage.energy_storage import Capacitor
 from src.supply.energy_supply import ConstantSupply
 from src.load.load import Resistor
-from time import sleep
 
 
 def generate_t_vector():

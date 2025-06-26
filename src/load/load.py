@@ -1,10 +1,17 @@
 from abc import ABC, abstractmethod
-import random
 
 # v_supply is provided by the energy storage (e.g. capacitor, etc)
 
 
 class Load(ABC):
+    @abstractmethod
+    def __init__(self):
+        self.type: str
+        self.operating_voltage: float
+        self.voltage: float
+        self.current: float
+        self.energy_consumed: float
+
     @abstractmethod
     def calculate_voltage(self, v_supply: float) -> float:
         pass
