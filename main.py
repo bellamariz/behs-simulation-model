@@ -1,7 +1,7 @@
-import time
-import random
-from src.energy_storage import EnergyStorage
-from src.energy_supply import EnergySupply
+from src.storage.energy_storage import Capacitor
+from src.supply.energy_supply import ConstantSupply
+from src.load.load import Resistor
+from time import sleep
 
 
 def generate_t_vector():
@@ -12,31 +12,27 @@ def generate_t_vector():
             interval for i in range(int((end - start) / interval) + 1)]
 
 
-def generate_status_vector(t_vector):
-    statuses = ["empty", "charging", "discharging", "full"]
-    return [random.choice(statuses)
-            for _ in range(len(t_vector))]
-
-
 def main():
     t_vector = generate_t_vector()
-    status_vector = generate_status_vector(t_vector)
-    v_supply = EnergySupply("energy_neutral", t_vector)
-    storage = EnergyStorage(vmax=10, vin=v_supply.profile[0])
-    storage.print(0)
+    supply = ConstantSupply(t_vector)
+    storage = Capacitor()
+    load = Resistor()
 
     for i, t in enumerate(t_vector):
-        # storage.refresh_energy_storage(
-        #     t=t, vin=v_supply_vector[i], status=status_vector[i]
-        # )
-        # storage.print(t)
+        print(f"Time step {i}: t={t:.2f}s\n")
 
-        print(
-            f"t={t},"
-            f"v_supply={v_supply.profile[i]},"
-            f"storage_status={status_vector[i]},"
-        )
-        time.sleep(1)
+        supply.refresh(t_index=i)
+        supply.print(t_index=i)
+
+        storage.refresh(t_time=t, v_supply=supply.voltage)
+        storage.print(t_index=i)
+
+        load.refresh(v_supply=storage.voltage)
+        load.print(t_index=i)
+
+        print("-" * 50)
+
+        sleep(2)
 
 
 if __name__ == "__main__":
