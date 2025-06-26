@@ -2,18 +2,11 @@ from time import sleep
 from src.storage.energy_storage import Capacitor
 from src.supply.energy_supply import ConstantSupply
 from src.load.load import Resistor
-
-
-def generate_t_vector():
-    start = 0.0
-    end = 6.0
-    interval = 0.25
-    return [start + i *
-            interval for i in range(int((end - start) / interval) + 1)]
+from internal.internal import Utils
 
 
 def main():
-    t_vector = generate_t_vector()
+    t_vector = Utils.generate_t_vector()
     supply = ConstantSupply(t_vector)
     storage = Capacitor()
     load = Resistor()
