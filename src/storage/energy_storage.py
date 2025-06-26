@@ -89,7 +89,7 @@ class Capacitor(EnergyStorage):
 
     # Given an instant t and supply voltage Vin, recalculate the stats for the Energy Storage
     def refresh(self, t_time, v_supply):
-        "super().refresh(t_time, v_supply)"
+        super().refresh(t_time, v_supply)
 
     def print(self, t_index):
-        "super().print(t_index)"
+        super().print(t_index)
