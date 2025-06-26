@@ -90,10 +90,3 @@ class Capacitor(EnergyStorage):
     # Energy stored in capacitor, E(t), at instant t and given Vc(t)
     def calculate_energy_stored(self):
         return (1/2) * self.CAPACITANCE * (self.voltage*self.voltage)
-
-    # Given an instant t and supply voltage Vin, recalculate the stats for the Energy Storage
-    def refresh(self, t_time, v_supply):
-        super().refresh(t_time, v_supply)
-
-    def print(self, t_index):
-        super().print(t_index)

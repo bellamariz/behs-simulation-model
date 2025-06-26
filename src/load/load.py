@@ -70,12 +70,6 @@ class Resistor(Load):
             return self.ENERGY_CONSUMPTION
         return 0.0
 
-    def refresh(self, v_supply):
-        super().refresh(v_supply)
-
-    def print(self, t_index):
-        super().print(t_index)
-
 
 class MCU(Load):
     ENERGY_CONSUMPTION = 0.02  # in joules, assumed constant
@@ -103,9 +97,3 @@ class MCU(Load):
         if v_supply >= self.operating_voltage:
             return self.ENERGY_CONSUMPTION
         return 0.0
-
-    def refresh(self, v_supply):
-        super().refresh(v_supply)
-
-    def print(self, t_index):
-        super().print(t_index)

@@ -43,12 +43,6 @@ class ConstantSupply(EnergySupply):
         self.voltage = 0.0
         self.profile = [5.0] * len(t_vector)
 
-    def refresh(self, t_index):
-        super().refresh(t_index)
-
-    def print(self, t_index):
-        super().print(t_index)
-
 
 class HarvestingSupply(EnergySupply):
     def __init__(self, t_vector):
@@ -56,9 +50,3 @@ class HarvestingSupply(EnergySupply):
         self.voltage = 0.0
         self.profile = [random.uniform(0.0, self.MAX_SUPPLY_VOLTAGE)
                         for _ in range(len(t_vector))]
-
-    def refresh(self, t_index):
-        super().refresh(t_index)
-
-    def print(self, t_index):
-        super().print(t_index)
