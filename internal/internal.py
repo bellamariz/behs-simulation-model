@@ -1,9 +1,6 @@
-import random
-
-
 class Utils():
 
-    def generate_t_vector():
+    def generate_t_vector(self):
         start = 0.0
         end = 6.0
         interval = 0.25

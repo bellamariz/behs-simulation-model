@@ -44,10 +44,10 @@ class ConstantSupply(EnergySupply):
         self.profile = [5.0] * len(t_vector)
 
     def refresh(self, t_index):
-        super().refresh(t_index)
+        "super().refresh(t_index)"
 
     def print(self, t_index):
-        super().print(t_index)
+        "super().print(t_index)"
 
 
 class HarvestingSupply(EnergySupply):
@@ -58,7 +58,7 @@ class HarvestingSupply(EnergySupply):
                         for _ in range(len(t_vector))]
 
     def refresh(self, t_index):
-        super().refresh(t_index)
+        "super().refresh(t_index)"
 
     def print(self, t_index):
-        super().print(t_index)
+        "super().print(t_index)"

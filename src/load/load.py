@@ -70,10 +70,10 @@ class Resistor(Load):
         return 0.0
 
     def refresh(self, v_supply):
-        super().refresh(v_supply)
+        "super().refresh(v_supply)"
 
     def print(self, t_index):
-        super().print(t_index)
+        "super().print(t_index)"
 
 
 class MCU(Load):
@@ -104,7 +104,7 @@ class MCU(Load):
         return 0.0
 
     def refresh(self, v_supply):
-        super().refresh(v_supply)
+        "super().refresh(v_supply)"
 
     def print(self, t_index):
-        super().print(t_index)
+        "super().print(t_index)"
