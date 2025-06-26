@@ -1,12 +1,18 @@
 import unittest
 from src.supply.energy_supply import ConstantSupply, HarvestingSupply
-from utils.utils import Utils
 
 
 class TestEnergySupply(unittest.TestCase):
 
+    def generate_t_vector(self):
+        start = 0.0
+        end = 6.0
+        interval = 0.25
+        return [start + i *
+                interval for i in range(int((end - start) / interval) + 1)]
+
     def setUp(self):
-        t_vector = Utils.generate_t_vector()
+        t_vector = self.generate_t_vector()
         self.supply_constant = ConstantSupply(t_vector)
         self.supply_harvesting = HarvestingSupply(t_vector)
 
