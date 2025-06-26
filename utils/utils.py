@@ -1,5 +1,4 @@
-class Utils():
-
+class Utils:
     def generate_t_vector(self):
         start = 0.0
         end = 6.0

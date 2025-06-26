@@ -1,6 +1,6 @@
 import unittest
 from src.supply.energy_supply import ConstantSupply, HarvestingSupply
-from internal.internal import Utils
+from utils.utils import Utils
 
 
 class TestEnergySupply(unittest.TestCase):

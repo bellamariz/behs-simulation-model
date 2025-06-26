@@ -2,7 +2,7 @@ from time import sleep
 from src.storage.energy_storage import Capacitor
 from src.supply.energy_supply import ConstantSupply
 from src.load.load import Resistor
-from internal.internal import Utils
+from utils.utils import Utils
 
 
 def main():
