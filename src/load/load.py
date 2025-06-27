@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 
-# v_supply is provided by the energy storage (e.g. capacitor, etc)
-
 
 class Load(ABC):
     @abstractmethod
@@ -11,24 +9,30 @@ class Load(ABC):
         self.voltage: float
         self.current: float
         self.energy_consumed: float
+        self.total_energy_consumed: float  # cumulative energy consumed
 
+    # v_supply -> the current voltage supplied by the energy storage
+    # v_load_min -> the min voltage needed for energy storage to start supplying load
     @abstractmethod
-    def calculate_voltage(self, v_supply: float) -> float:
+    def calculate_voltage(self, v_supply: float, v_load_min: float) -> float:
         pass
 
     @abstractmethod
-    def calculate_current(self, v_supply: float) -> float:
+    def calculate_current(self, v_supply: float, v_load_min: float) -> float:
         pass
 
     @abstractmethod
-    def calculate_energy_consumed(self, v_supply: float) -> float:
+    def calculate_energy_consumed(self, v_supply: float, v_load_min: float) -> float:
         pass
 
     @abstractmethod
-    def refresh(self, v_supply: float) -> None:
-        self.voltage = self.calculate_voltage(v_supply)
-        self.current = self.calculate_current(v_supply)
-        self.energy_consumed = self.calculate_energy_consumed(v_supply)
+    def refresh(self, v_supply: float, v_load_min: float) -> None:
+        self.voltage = self.calculate_voltage(v_supply, v_load_min)
+        self.current = self.calculate_current(v_supply, v_load_min)
+        self.energy_consumed = self.calculate_energy_consumed(
+            v_supply, v_load_min)
+        self.total_energy_consumed += self.calculate_energy_consumed(
+            v_supply, v_load_min)
 
     @abstractmethod
     def print(self, t_index: int) -> None:
@@ -38,7 +42,8 @@ class Load(ABC):
             f"operating_voltage={self.operating_voltage:.5f}V,"
             f"voltage={self.voltage:.5f}V,"
             f"current={self.current:.5f}A,"
-            f"energy_consumed={self.energy_consumed:.5f}J\n"
+            f"energy_consumed={self.energy_consumed:.5f}J,"
+            f"total_energy_consumed={self.total_energy_consumed:.5f}J\n"
         )
 
 
@@ -53,24 +58,25 @@ class Resistor(Load):
         self.voltage = 0.0  # in volts
         self.current = 0.0  # in amperes
         self.energy_consumed = 0.0  # in joules
+        self.total_energy_consumed = 0.0  # in joules, cumulative energy consumed
 
-    def calculate_current(self, v_supply):
-        if v_supply >= self.operating_voltage:
+    def calculate_current(self, v_supply, v_load_min):
+        if (v_supply >= self.operating_voltage) and (v_supply >= v_load_min):
             return v_supply / self.RESISTANCE
         return 0.0
 
-    def calculate_voltage(self, v_supply):
-        if v_supply >= self.operating_voltage:
+    def calculate_voltage(self, v_supply, v_load_min):
+        if (v_supply >= self.operating_voltage) and (v_supply >= v_load_min):
             return v_supply
         return 0.0
 
-    def calculate_energy_consumed(self, v_supply):
-        if v_supply >= self.operating_voltage:
+    def calculate_energy_consumed(self, v_supply, v_load_min):
+        if (v_supply >= self.operating_voltage) and (v_supply >= v_load_min):
             return self.ENERGY_CONSUMPTION
         return 0.0
 
-    def refresh(self, v_supply):
-        super().refresh(v_supply)
+    def refresh(self, v_supply, v_load_min):
+        super().refresh(v_supply, v_load_min)
 
     def print(self, t_index):
         super().print(t_index)
@@ -87,24 +93,25 @@ class MCU(Load):
         self.voltage = 0.0  # in volts
         self.current = 0.0  # in amperes
         self.energy_consumed = 0.0  # in joules
+        self.total_energy_consumed = 0.0  # in joules, cumulative energy consumed
 
-    def calculate_current(self, v_supply):
-        if v_supply >= self.operating_voltage:
+    def calculate_current(self, v_supply, v_load_min):
+        if (v_supply >= self.operating_voltage) and (v_supply >= v_load_min):
             return self.OPERATING_CURRENT
         return 0.0
 
-    def calculate_voltage(self, v_supply):
-        if v_supply >= self.operating_voltage:
+    def calculate_voltage(self, v_supply, v_load_min):
+        if (v_supply >= self.operating_voltage) and (v_supply >= v_load_min):
             return self.OPERATING_VOLTAGE
         return 0.0
 
-    def calculate_energy_consumed(self, v_supply):
-        if v_supply >= self.operating_voltage:
+    def calculate_energy_consumed(self, v_supply, v_load_min):
+        if (v_supply >= self.operating_voltage) and (v_supply >= v_load_min):
             return self.ENERGY_CONSUMPTION
         return 0.0
 
-    def refresh(self, v_supply):
-        super().refresh(v_supply)
+    def refresh(self, v_supply, v_load_min):
+        super().refresh(v_supply, v_load_min)
 
     def print(self, t_index):
         super().print(t_index)
