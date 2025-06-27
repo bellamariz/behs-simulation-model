@@ -41,7 +41,7 @@ class ConstantSupply(EnergySupply):
     def __init__(self, t_vector):
         self.type = "constant"
         self.voltage = 0.0
-        self.profile = [5.0] * len(t_vector)
+        self.profile = [8.0] * len(t_vector)
 
     def refresh(self, t_index):
         super().refresh(t_index)
