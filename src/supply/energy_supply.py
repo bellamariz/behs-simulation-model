@@ -29,11 +29,12 @@ class EnergySupply(ABC):
         self.voltage = self.profile[t_index]
 
     @abstractmethod
-    def print(self, t_index: int) -> None:
+    def print(self, t_index: int, file) -> None:
         print(
             f"Energy Supply: {self.type} --> "
             f"t={t_index},"
-            f"voltage={self.voltage:.5f}V\n"
+            f"voltage={self.voltage:.5f}V",
+            file=file
         )
 
 
@@ -46,8 +47,8 @@ class ConstantSupply(EnergySupply):
     def refresh(self, t_index):
         super().refresh(t_index)
 
-    def print(self, t_index):
-        super().print(t_index)
+    def print(self, t_index, file):
+        super().print(t_index, file)
 
 
 class HarvestingSupply(EnergySupply):
@@ -60,5 +61,5 @@ class HarvestingSupply(EnergySupply):
     def refresh(self, t_index):
         super().refresh(t_index)
 
-    def print(self, t_index):
-        super().print(t_index)
+    def print(self, t_index, file):
+        super().print(t_index, file)

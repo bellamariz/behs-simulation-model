@@ -31,13 +31,14 @@ class EnergyStorage(ABC):
         self.energy_stored = self.calculate_energy_stored(load_energy_consumed)
 
     @abstractmethod
-    def print(self, t_index: int) -> None:
+    def print(self, t_index: int, file) -> None:
         print(
             f"Energy Storage: {self.type} --> "
             f"t={t_index},"
             f"voltage={self.voltage:.5f}V,"
             f"current={self.current:.5f}A,"
-            f"energy_stored={self.energy_stored:.5f}J\n"
+            f"energy_stored={self.energy_stored:.5f}J",
+            file=file
         )
 
 
@@ -96,5 +97,5 @@ class Capacitor(EnergyStorage):
     def refresh(self, t_time, v_supply, load_energy_consumed):
         super().refresh(t_time, v_supply, load_energy_consumed)
 
-    def print(self, t_index):
-        super().print(t_index)
+    def print(self, t_index, file):
+        super().print(t_index, file)

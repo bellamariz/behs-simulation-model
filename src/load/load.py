@@ -35,7 +35,7 @@ class Load(ABC):
             v_supply, v_load_min)
 
     @abstractmethod
-    def print(self, t_index: int) -> None:
+    def print(self, t_index: int, file) -> None:
         print(
             f"Load: {self.type} --> "
             f"t={t_index},"
@@ -43,7 +43,8 @@ class Load(ABC):
             f"voltage={self.voltage:.5f}V,"
             f"current={self.current:.5f}A,"
             f"energy_consumed={self.energy_consumed:.5f}J,"
-            f"total_energy_consumed={self.total_energy_consumed:.5f}J\n"
+            f"total_energy_consumed={self.total_energy_consumed:.5f}J",
+            file=file
         )
 
 
@@ -78,8 +79,8 @@ class Resistor(Load):
     def refresh(self, v_supply, v_load_min):
         super().refresh(v_supply, v_load_min)
 
-    def print(self, t_index):
-        super().print(t_index)
+    def print(self, t_index, file):
+        super().print(t_index, file)
 
 
 class MCU(Load):
@@ -113,5 +114,5 @@ class MCU(Load):
     def refresh(self, v_supply, v_load_min):
         super().refresh(v_supply, v_load_min)
 
-    def print(self, t_index):
-        super().print(t_index)
+    def print(self, t_index, file):
+        super().print(t_index, file)
