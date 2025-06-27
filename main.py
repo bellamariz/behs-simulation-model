@@ -1,4 +1,3 @@
-from time import sleep
 from src.storage.energy_storage import Capacitor
 from src.supply.energy_supply import ConstantSupply
 from src.load.load import Resistor
@@ -32,8 +31,6 @@ def main():
         load.print(t_index=i)
 
         print("-" * 50)
-
-        # sleep(0.5)
 
 
 if __name__ == "__main__":
