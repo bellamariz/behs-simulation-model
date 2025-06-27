@@ -10,7 +10,8 @@ install:
 	pip3 install -r requirements.txt
 
 run:
-	python3 main.py
+	python3 main.py >> output.log 
+	@echo "Simulation completed. Check 'output.log' for results."
 
 clean:
 	rm -rf .pytest_cache */__pycache__ */*/__pycache__
