@@ -119,8 +119,6 @@ def plot_all_components_same_window(df, components, y_attribute):
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-    return plt
-
 
 # y_attributes is a list of sub-lists containing attribute name and unit, e.g. [["voltage", "V"], ["current", "A"]]
 def plot_all_attributes_for_component(df, component, y_attributes):
@@ -147,8 +145,6 @@ def plot_all_attributes_for_component(df, component, y_attributes):
                  " Over Time", fontsize=16)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-    return plt
-
 
 def plot_output():
     df = pd.read_excel("output.xlsx")
@@ -161,11 +157,11 @@ def plot_output():
     # plt = plot_all_components_same_grid(df, components, ["voltage", "V"])
 
     # plot all attributes for a component, in the same window
-    plt = plot_all_attributes_for_component(
+    plot_all_attributes_for_component(
         df, components[1], [["voltage", "V"], ["current", "A"], ["energy_stored", "J"]])
     plt.show()
 
-    plt = plot_all_attributes_for_component(
+    plot_all_attributes_for_component(
         df, components[2], [["voltage", "V"], ["current", "A"], ["total_energy_consumed", "J"]])
     plt.show()
 
