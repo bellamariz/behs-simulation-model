@@ -80,7 +80,7 @@ def write_output_to_csv(t_vector, supply, storage, load):
             })
 
 
-# y_attribute is a list of column name and unit, e.g. ["voltage", "V"]
+# y_attribute is a list of attribute name and unit, e.g. ["voltage", "V"]
 def plot_all_components_same_grid(df, components, y_attribute):
     value = y_attribute[0]
     unit = y_attribute[1]
@@ -91,9 +91,9 @@ def plot_all_components_same_grid(df, components, y_attribute):
         comp_df = df[df["component"] == component]
         plt.plot(comp_df["time"], comp_df[value], label=component)
 
-    plt.title(f"{value.capitalize()}({unit}) x Time(s)")
-    plt.xlabel("Time(s)")
-    plt.ylabel(f"{value.capitalize()}({unit})")
+    plt.title(f"{value.capitalize()} ({unit}) x Time (s)")
+    plt.xlabel("Time (s)")
+    plt.ylabel(f"{value.capitalize()} ({unit})")
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
@@ -101,7 +101,7 @@ def plot_all_components_same_grid(df, components, y_attribute):
     return plt
 
 
-# y_attribute is a list of column name and unit, e.g. ["voltage", "V"]
+# y_attribute is a list of attribute name and unit, e.g. ["voltage", "V"]
 def plot_all_components_same_window(df, components, y_attribute):
     _, axes = plt.subplots(1, 3, figsize=(18, 5), sharex=True, sharey=True)
 
@@ -111,12 +111,40 @@ def plot_all_components_same_window(df, components, y_attribute):
     for ax, component in zip(axes, components):
         comp_df = df[df["component"] == component]
         ax.plot(comp_df["time"], comp_df[value], label=component)
-        ax.set_title(f"{value.capitalize()}({unit}) x Time(s)")
-        ax.set_xlabel("Time(s)")
-        ax.set_ylabel(f"{value.capitalize()}({unit})")
+        ax.set_title(f"{value.capitalize()} ({unit}) x Time (s)")
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel(f"{value.capitalize()} ({unit})")
         ax.grid(True)
         ax.legend()
 
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    return plt
+
+
+# y_attributes is a list of sub-lists containing attribute name and unit, e.g. [["voltage", "V"], ["current", "A"]]
+def plot_all_attributes_for_component(df, component, y_attributes):
+    _, axes = plt.subplots(1, len(y_attributes), figsize=(
+        6 * len(y_attributes), 5), sharex=True)
+
+    # If only one attribute, axes is not a list, so make it a list for consistency
+    if len(y_attributes) == 1:
+        axes = [axes]
+
+    for ax, y_attribute in zip(axes, y_attributes):
+        value = y_attribute[0]
+        unit = y_attribute[1]
+
+        comp_df = df[df["component"] == component]
+        ax.plot(comp_df["time"], comp_df[value], label=component)
+        ax.set_title(f"{value.capitalize()} ({unit}) x Time (s)")
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel(f"{value.capitalize()} ({unit})")
+        ax.grid(True)
+        ax.legend()
+
+    plt.suptitle("Attributes of " + component.capitalize() +
+                 " Over Time", fontsize=16)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
     return plt
@@ -126,11 +154,15 @@ def plot_output():
     df = pd.read_excel("output.xlsx")
     components = ["supply", "storage", "load"]
 
-    # plot each component in a separate graph, but same window
-    plt = plot_all_components_same_window(df, components, ["voltage", "V"])
+    # plot same attribute for all components, in a separate graph, but same window
+    # plt = plot_all_components_same_window(df, components, ["voltage", "V"])
 
-    # plot each component in the same graph and window
+    # plot same attribute for all components, in the same graph and window
     # plt = plot_all_components_same_grid(df, components, ["voltage", "V"])
+
+    # plot all attributes for a component, in the same window
+    plt = plot_all_attributes_for_component(
+        df, "storage", [["voltage", "V"], ["current", "A"], ["energy_stored", "J"]])
 
     plt.show()
 
