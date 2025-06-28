@@ -1,5 +1,6 @@
 import csv
 import pandas as pd
+import matplotlib.pyplot as plt
 from src.storage.energy_storage import Capacitor
 from src.supply.energy_supply import ConstantSupply
 from src.load.load import Resistor
@@ -79,23 +80,78 @@ def write_output_to_csv(t_vector, supply, storage, load):
             })
 
 
+# y_attribute is a list of column name and unit, e.g. ["voltage", "V"]
+def plot_all_components_same_grid(df, components, y_attribute):
+    value = y_attribute[0]
+    unit = y_attribute[1]
+
+    plt.figure(figsize=(10, 6))
+
+    for component in components:
+        comp_df = df[df["component"] == component]
+        plt.plot(comp_df["time"], comp_df[value], label=component)
+
+    plt.title(f"{value.capitalize()}({unit}) x Time(s)")
+    plt.xlabel("Time(s)")
+    plt.ylabel(f"{value.capitalize()}({unit})")
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout()
+
+    return plt
+
+
+# y_attribute is a list of column name and unit, e.g. ["voltage", "V"]
+def plot_all_components_same_window(df, components, y_attribute):
+    _, axes = plt.subplots(1, 3, figsize=(18, 5), sharex=True, sharey=True)
+
+    value = y_attribute[0]
+    unit = y_attribute[1]
+
+    for ax, component in zip(axes, components):
+        comp_df = df[df["component"] == component]
+        ax.plot(comp_df["time"], comp_df[value], label=component)
+        ax.set_title(f"{value.capitalize()}({unit}) x Time(s)")
+        ax.set_xlabel("Time(s)")
+        ax.set_ylabel(f"{value.capitalize()}({unit})")
+        ax.grid(True)
+        ax.legend()
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+
+    return plt
+
+
+def plot_output():
+    df = pd.read_excel("output.xlsx")
+    components = ["supply", "storage", "load"]
+
+    # plot each component in a separate graph, but same window
+    plt = plot_all_components_same_window(df, components, ["voltage", "V"])
+
+    # plot each component in the same graph and window
+    # plt = plot_all_components_same_grid(df, components, ["voltage", "V"])
+
+    plt.show()
+
+
 def main():
     t_vector = generate_t_vector()
     supply = ConstantSupply(t_vector)
     storage = Capacitor()
     load = Resistor()
 
-    # Uncomment the following line to write output to a log file
+    # uncomment the following line to write output to a log file
     # write_output_to_log(t_vector, supply, storage, load)
 
-    # Write output to CSV
+    # write output to CSV
     write_output_to_csv(t_vector, supply, storage, load)
 
-    # Read the CSV file
+    # write output to Excel file
     df = pd.read_csv("output.csv")
+    df.to_excel("output.xlsx", index=False, na_rep="NaN")
 
-    # Write to Excel file
-    df.to_excel("output.xlsx", index=False, na_rep='NaN')
+    plot_output()
 
 
 if __name__ == "__main__":
