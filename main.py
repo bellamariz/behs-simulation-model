@@ -162,8 +162,11 @@ def plot_output():
 
     # plot all attributes for a component, in the same window
     plt = plot_all_attributes_for_component(
-        df, "storage", [["voltage", "V"], ["current", "A"], ["energy_stored", "J"]])
+        df, components[1], [["voltage", "V"], ["current", "A"], ["energy_stored", "J"]])
+    plt.show()
 
+    plt = plot_all_attributes_for_component(
+        df, components[2], [["voltage", "V"], ["current", "A"], ["total_energy_consumed", "J"]])
     plt.show()
 
 
