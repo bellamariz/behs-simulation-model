@@ -71,6 +71,11 @@ def write_output_to_csv(t_vector, supply, storage, load):
             })
 
 
+def write_output_to_excel():
+    df = pd.read_csv("output.csv")
+    df.to_excel("output.xlsx", index=False, na_rep="NaN")
+
+
 # Plots the same attribute over time for all components, overlapped on the same subplot
 # Useful for comparing the same attribute across different components
 # Param 'y_attribute' is a list of attribute name and unit, e.g. ["voltage", "V"]
@@ -150,12 +155,12 @@ def plot_output():
     components = ["supply", "storage", "load"]
 
     # Plot same attribute for all components, in the same subplot and window
-    plt = plot_all_components_same_subplot(
+    plot_all_components_same_subplot(
         df, components, ["voltage", "V"])
     plt.show()
 
     # Plot same attribute for all components, in separate subplots, but same window
-    plt = plot_all_components_different_subplots(
+    plot_all_components_different_subplots(
         df, components, ["voltage", "V"])
     plt.show()
 

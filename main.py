@@ -29,8 +29,7 @@ def main():
     output.write_output_to_csv(t_vector, supply, storage, load)
 
     # Formats and writes output to local Excel file, 'output.xlsx'
-    df = pd.read_csv("output.csv")
-    df.to_excel("output.xlsx", index=False, na_rep="NaN")
+    output.write_output_to_excel()
 
     # Reads Excel file and plots the output
     output.plot_output()
