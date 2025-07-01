@@ -5,6 +5,8 @@ from src.supply.energy_supply import ConstantSupply
 from src.load.load import Resistor
 
 
+# Generates a time vector from 0 to 60 seconds with an interval of 250 milliseconds
+# It is used to simulate the energy supply, storage, and load over time
 def generate_t_vector():
     start = 0.0
     end = 60.0
@@ -13,22 +15,27 @@ def generate_t_vector():
             interval for i in range(int((end - start) / interval) + 1)]
 
 
+# Main function to run the simulation
 def main():
+    # Generates a time vector
     t_vector = generate_t_vector()
+
+    # Initializes the components of the simulation
     supply = ConstantSupply(t_vector)
     storage = Capacitor()
     load = Resistor()
 
-    # uncomment the following line to write output to a log file
-    # output.write_output_to_log(t_vector, supply, storage, load)
+    # Writes output of simulation to local log file, 'output.log'
+    output.write_output_to_log(t_vector, supply, storage, load)
 
-    # write output to CSV
+    # Formats and writes output to local CSV file, 'output.csv'
     output.write_output_to_csv(t_vector, supply, storage, load)
 
-    # write output to Excel file
+    # Formats and writes output to local Excel file, 'output.xlsx'
     df = pd.read_csv("output.csv")
     df.to_excel("output.xlsx", index=False, na_rep="NaN")
 
+    # Reads Excel file and plots the output
     output.plot_output()
 
 

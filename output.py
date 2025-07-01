@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
+# Writes the output of the simulation to a log file
 def write_output_to_log(t_vector, supply, storage, load):
     with open("output.log", "w", encoding="utf-8") as logfile:
         print("Simulation started", file=logfile)
@@ -23,6 +24,7 @@ def write_output_to_log(t_vector, supply, storage, load):
             print("-" * 50, file=logfile)
 
 
+# Writes the output of the simulation to a CSV file
 def write_output_to_csv(t_vector, supply, storage, load):
     with open("output.csv", "w", newline="", encoding="utf-8") as csvfile:
         fieldnames = ["step", "time", "component", "voltage", "current",
@@ -69,8 +71,10 @@ def write_output_to_csv(t_vector, supply, storage, load):
             })
 
 
-# y_attribute is a list of attribute name and unit, e.g. ["voltage", "V"]
-def plot_all_components_same_grid(df, components, y_attribute):
+# Plots the same attribute over time for all components, overlapped on the same subplot
+# Useful for comparing the same attribute across different components
+# Param 'y_attribute' is a list of attribute name and unit, e.g. ["voltage", "V"]
+def plot_all_components_same_subplot(df, components, y_attribute):
     value = y_attribute[0]
     unit = y_attribute[1]
 
@@ -90,8 +94,10 @@ def plot_all_components_same_grid(df, components, y_attribute):
     return plt
 
 
-# y_attribute is a list of attribute name and unit, e.g. ["voltage", "V"]
-def plot_all_components_same_window(df, components, y_attribute):
+# Plots the same attribute over time for all components, but in different subplots
+# Useful for comparing the same attribute across different components
+# Param 'y_attribute' is a list of attribute name and unit, e.g. ["voltage", "V"]
+def plot_all_components_different_subplots(df, components, y_attribute):
     _, axes = plt.subplots(1, 3, figsize=(18, 5), sharex=True, sharey=True)
 
     value = y_attribute[0]
@@ -109,12 +115,14 @@ def plot_all_components_same_window(df, components, y_attribute):
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
 
-# y_attributes is a list of sub-lists containing attribute name and unit, e.g. [["voltage", "V"], ["current", "A"]]
+# Plots all attributes for a specific component in the same window
+# Useful for visualizing multiple attributes of a single component over time
+# Param 'y_attributes' is a list of sub-lists containing attribute name and unit
+# e.g. [["voltage", "V"], ["current", "A"]]
 def plot_all_attributes_for_component(df, component, y_attributes):
     _, axes = plt.subplots(1, len(y_attributes), figsize=(
         6 * len(y_attributes), 5), sharex=True)
 
-    # If only one attribute, axes is not a list, so make it a list for consistency
     if len(y_attributes) == 1:
         axes = [axes]
 
@@ -135,17 +143,23 @@ def plot_all_attributes_for_component(df, component, y_attributes):
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
 
+# Main function to plot the simulation output
+# Reads data from Excel file 'output.xlsx'
 def plot_output():
     df = pd.read_excel("output.xlsx")
     components = ["supply", "storage", "load"]
 
-    # plot same attribute for all components, in a separate graph, but same window
-    # plt = plot_all_components_same_window(df, components, ["voltage", "V"])
+    # Plot same attribute for all components, in the same subplot and window
+    plt = plot_all_components_same_subplot(
+        df, components, ["voltage", "V"])
+    plt.show()
 
-    # plot same attribute for all components, in the same graph and window
-    # plt = plot_all_components_same_grid(df, components, ["voltage", "V"])
+    # Plot same attribute for all components, in separate subplots, but same window
+    plt = plot_all_components_different_subplots(
+        df, components, ["voltage", "V"])
+    plt.show()
 
-    # plot all attributes for a component, in the same window
+    # Plot all attributes for a component, in separate subplots, but same window
     plot_all_attributes_for_component(
         df, components[1], [["voltage", "V"], ["current", "A"], ["energy_stored", "J"]])
     plt.show()
