@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 # Main function to write the output of the simulation to a log file
-def write_output_to_log(t_vector, supply, storage, load):
+def write_to_log(t_vector, supply, storage, load):
     with open("output.log", "w", encoding="utf-8") as logfile:
         print("Simulation started", file=logfile)
         for i, t in enumerate(t_vector):
@@ -25,7 +25,7 @@ def write_output_to_log(t_vector, supply, storage, load):
 
 
 # Main function to write the output of the simulation to a CSV file
-def write_output_to_csv(t_vector, supply, storage, load):
+def write_to_csv(t_vector, supply, storage, load):
     with open("output.csv", "w", newline="", encoding="utf-8") as csvfile:
         fieldnames = ["step", "time", "component", "voltage", "current",
                       "energy_stored", "energy_consumed", "total_energy_consumed"]
@@ -72,14 +72,14 @@ def write_output_to_csv(t_vector, supply, storage, load):
 
 
 # Main function to write the output of the simulation to an Excel file
-def write_output_to_excel():
+def write_to_excel():
     df = pd.read_csv("output.csv")
     df.to_excel("output.xlsx", index=False, na_rep="NaN")
 
 
 # Main function to plot the simulation output
 # Reads data from Excel file 'output.xlsx'
-def plot_output():
+def plot():
     df = pd.read_excel("output.xlsx")
     components = ["supply", "storage", "load"]
 

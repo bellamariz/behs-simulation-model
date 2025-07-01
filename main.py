@@ -23,16 +23,16 @@ def main():
     load = Resistor()
 
     # Writes output of simulation to local log file, 'output.log'
-    output.write_output_to_log(t_vector, supply, storage, load)
+    output.write_to_log(t_vector, supply, storage, load)
 
     # Formats and writes output to local CSV file, 'output.csv'
-    output.write_output_to_csv(t_vector, supply, storage, load)
+    output.write_to_csv(t_vector, supply, storage, load)
 
     # Formats and writes output to local Excel file, 'output.xlsx'
-    output.write_output_to_excel()
+    output.write_to_excel()
 
     # Reads Excel file and plots the output
-    output.plot_output()
+    output.plot()
 
 
 if __name__ == "__main__":
