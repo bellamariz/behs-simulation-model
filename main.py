@@ -1,4 +1,3 @@
-import pandas as pd
 import output
 from src.storage.energy_storage import Capacitor
 from src.supply.energy_supply import ConstantSupply
