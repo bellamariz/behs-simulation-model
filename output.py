@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-# Writes the output of the simulation to a log file
+# Main function to write the output of the simulation to a log file
 def write_output_to_log(t_vector, supply, storage, load):
     with open("output.log", "w", encoding="utf-8") as logfile:
         print("Simulation started", file=logfile)
@@ -24,7 +24,7 @@ def write_output_to_log(t_vector, supply, storage, load):
             print("-" * 50, file=logfile)
 
 
-# Writes the output of the simulation to a CSV file
+# Main function to write the output of the simulation to a CSV file
 def write_output_to_csv(t_vector, supply, storage, load):
     with open("output.csv", "w", newline="", encoding="utf-8") as csvfile:
         fieldnames = ["step", "time", "component", "voltage", "current",
@@ -71,9 +71,36 @@ def write_output_to_csv(t_vector, supply, storage, load):
             })
 
 
+# Main function to write the output of the simulation to an Excel file
 def write_output_to_excel():
     df = pd.read_csv("output.csv")
     df.to_excel("output.xlsx", index=False, na_rep="NaN")
+
+
+# Main function to plot the simulation output
+# Reads data from Excel file 'output.xlsx'
+def plot_output():
+    df = pd.read_excel("output.xlsx")
+    components = ["supply", "storage", "load"]
+
+    # Plot same attribute for all components, in the same subplot and window
+    plot_all_components_same_subplot(
+        df, components, ["voltage", "V"])
+    plt.show()
+
+    # Plot same attribute for all components, in separate subplots, but same window
+    plot_all_components_different_subplots(
+        df, components, ["voltage", "V"])
+    plt.show()
+
+    # Plot all attributes for a component, in separate subplots, but same window
+    plot_all_attributes_for_component(
+        df, components[1], [["voltage", "V"], ["current", "A"], ["energy_stored", "J"]])
+    plt.show()
+
+    plot_all_attributes_for_component(
+        df, components[2], [["voltage", "V"], ["current", "A"], ["total_energy_consumed", "J"]])
+    plt.show()
 
 
 # Plots the same attribute over time for all components, overlapped on the same subplot
@@ -146,29 +173,3 @@ def plot_all_attributes_for_component(df, component, y_attributes):
     plt.suptitle("Attributes of " + component.capitalize() +
                  " Over Time", fontsize=16)
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-
-# Main function to plot the simulation output
-# Reads data from Excel file 'output.xlsx'
-def plot_output():
-    df = pd.read_excel("output.xlsx")
-    components = ["supply", "storage", "load"]
-
-    # Plot same attribute for all components, in the same subplot and window
-    plot_all_components_same_subplot(
-        df, components, ["voltage", "V"])
-    plt.show()
-
-    # Plot same attribute for all components, in separate subplots, but same window
-    plot_all_components_different_subplots(
-        df, components, ["voltage", "V"])
-    plt.show()
-
-    # Plot all attributes for a component, in separate subplots, but same window
-    plot_all_attributes_for_component(
-        df, components[1], [["voltage", "V"], ["current", "A"], ["energy_stored", "J"]])
-    plt.show()
-
-    plot_all_attributes_for_component(
-        df, components[2], [["voltage", "V"], ["current", "A"], ["total_energy_consumed", "J"]])
-    plt.show()
