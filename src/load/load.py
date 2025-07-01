@@ -93,7 +93,7 @@ class Resistor(Load):
         super().print(t_index, file)
 
 
-# Class Load for the BEHS simulation model, inheriting from Load Class
+# Class MCU for the BEHS simulation model, inheriting from Load Class
 # It represents a microcontroller unit (MCU), consuming energy based on its specs
 class MCU(Load):
     # Values assumed constant for simplicity
