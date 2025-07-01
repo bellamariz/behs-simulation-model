@@ -5,12 +5,9 @@ from src.supply.energy_supply import ConstantSupply
 from src.load.load import Resistor
 
 
-# Generates a time vector from 0 to 60 seconds with an interval of 250 milliseconds
+# Generates a time vector with a given start, end and interval
 # It is used to simulate the energy supply, storage, and load over time
-def generate_t_vector():
-    start = 0.0
-    end = 60.0
-    interval = 0.25
+def generate_t_vector(start, end, interval):
     return [start + i *
             interval for i in range(int((end - start) / interval) + 1)]
 
@@ -18,7 +15,7 @@ def generate_t_vector():
 # Main function to run the simulation
 def main():
     # Generates a time vector
-    t_vector = generate_t_vector()
+    t_vector = generate_t_vector(start=0, end=60, interval=0.25)
 
     # Initializes the components of the simulation
     supply = ConstantSupply(t_vector)
