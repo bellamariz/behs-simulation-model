@@ -1,25 +1,34 @@
 # BEHS Simulation Model
 
-This document serves as wiki for the project.
-
 ## Description
 
-> _**Warning:** This project is still under ongoing improvements. The equations that model system components might change in the future._
+> _**Warning:** The project is still under ongoing improvements. The equations that model system components might change in the future._
 
-This project can be used to simulate the energy behaviour of a Battery-less Energy Harvesting System (BEHS).
+Our project provides a simulation framework for analyzing and understanding the energy behaviour of **Battery-less Energy Harvesting Systems** (BEHS).
 
-We assume the following BEHS architecture for developing the simulation model:
+It was designed to help researchers and professionals in the field of IoT who study and develop energy harvesting applications, such as wireless sensor networks, environmental monitoring systems, wearable electronics, etc.
+
+### BEHS Architecture
+
+A **Battery-less Energy Harvesting System** (BEHS) is an IoT-based solution normally destined towards battery-less and/or low-power applications. It harvests natural energy sources from the environment to power its end-use computational devices and electronics.
+
+A BEHS can be decomposed into three sub-systems:
+
+- The *Harvesting Circuit* captures ambient energy and converts it into electrical energy (e.g. solar, wind, mechanical).
+- The *Energy Storage* stores excess energy for later use by the system (e.g. capacitors).
+- The *Load* is the device being powered (e.g. microcontroller, peripherals).
 
 ![Energy Harvesting Architecture](docs/eh-architecture.png)
 
-The `src` folder contains three sub-folders, one for each sub-system described above.
+Our proposed model allows users to define which components will comprise each sub-system. They can run simulations for different components combinations, and plot graphs to observe the energetic behavior of each sub-system.
 
-- `supply` - Represents the _Harvesting Circuit_ sub-system, i.e. the energy harvesting architecture.
-    - Implements the `EnergySupply` component class.
-- `storage` - Represents the _Energy Storage_ sub-system, i.e. the buffer used to store excess harvested energy.
-    - Implements the `EnergyStorage` component class.
-- `load` - Represents the _Load_ sub-system, i.e. the load powered by the system.
-    - Implements the `Load` component class.
+### Usage
+
+The `src` folder contains three sub-folders, one for each BEHS sub-system.
+
+- `supply` - Represents the _Harvesting Circuit_ sub-system, implemented by the `EnergySupply` class.
+- `storage` - Represents the _Energy Storage_ sub-system, implemented by the `EnergyStorage` class.
+- `load` - Represents the _Load_ sub-system, implemented by the `Load` class.
 
 This structure allows users to expand these inheritable classes and define new components of their own, for example:
 
