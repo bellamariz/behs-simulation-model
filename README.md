@@ -2,6 +2,8 @@
 
 A Python-based simulation model for Battery-less Energy Harvesting Systems (BEHSs).
 
+> *Make sure you are using a **Python virtual environment** to run the project. Learn more about how to install and activate a virtual environment for your operating system [here](https://realpython.com/python-virtual-environments-a-primer/).*
+
 ## Description
 
 This model may be used to simulate and trace the energy flowing across a Battery-less Energy Harvesting System (BEHS) over time. 
@@ -10,11 +12,15 @@ Given a group of pre-configured input parameters (e.g. energy supply, energy sto
 
 ## Getting Started
 
-The `Makefile` contains all necessary commands for mantaining the project.
+Download the project `.zip` or use Git clone, like below:
 
-> *Make sure you are using a **Python virtual environment** to run these commands. Learn more about how to install and activate a virtual environment for your operating system [here](https://realpython.com/python-virtual-environments-a-primer/).*
+```sh
+git clone https://github.com/bellamariz/behs-simulation-model.git
+```
 
-### Installing dependencies
+Inside the project directory, the `Makefile` contains all necessary commands for running the project features.
+
+### Install dependencies
 
 The project dependencies are listed in the local file `requirements.txt`. To install them, run:
 
@@ -22,31 +28,31 @@ The project dependencies are listed in the local file `requirements.txt`. To ins
 make install
 ```
 
-### Running
+### Run tests
 
-To execute the simulation model at `main.py`, run:
-
-```sh
-make run
-```
-
-### Code Linter
-
-To execute a code linter using `pylint`, run:
-
-```sh
-make lint
-```
-
-### Tests
-
-To execute all test suites using `pytest`, run:
+To execute the test suites, run:
 
 ```sh
 make test
 ```
 
-### Cleaning cache files
+### Run code linter
+
+To execute the Python code linter, run:
+
+```sh
+make lint
+```
+
+### Run simulation
+
+To execute the simulation model, run:
+
+```sh
+make run
+```
+
+### Cleaning cached files
 
 By default, Python generates several cache files after running code, tests or linter. To clean these cached files, run:
 
