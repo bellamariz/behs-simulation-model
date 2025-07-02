@@ -120,7 +120,7 @@ A researcher wants to simulate a system with a solar panel and a wind turbine ge
 
 But, when they try to run the output functions in `main.py`, passing two energy supply components as parameters, they realise the code doesn't work. This happens because, as of now, the simulation only supports one supply, one storage, and one load at a time to generate the log and CSV files. 
 
-```
+```python
 # Writes output of simulation to local log file, 'output.log'
 output.write_to_log(t_vector, supply, storage, load)
 
