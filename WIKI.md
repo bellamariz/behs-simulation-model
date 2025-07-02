@@ -228,6 +228,7 @@ _Make sure all dependencies are installed and your Python virtual environment is
    from src.load.load import MyNewLoad
    load = MyNewLoad()
    ```
+8. Run the simulation again, and don't forget to create a new test suite inside the `tests` folder for your new class.
 
 ### Customizing Simulation Output Plotting
 
