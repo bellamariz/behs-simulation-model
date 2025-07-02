@@ -59,3 +59,7 @@ By default, Python generates several cache files after running code, tests or li
 ```sh
 make clean
 ```
+
+## Documentation
+
+Full project documentation, including the Wiki, can be found on the [docs](docs/) folder.
