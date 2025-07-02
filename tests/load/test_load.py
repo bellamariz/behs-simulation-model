@@ -152,6 +152,7 @@ class TestLoadMCU(unittest.TestCase):
 
     def test_refresh_single_time(self):
         self.load_mcu.refresh(v_supply=5.0, v_load_min=3.3)
+
         self.assertEqual(self.load_mcu.voltage, MCU.OPERATING_VOLTAGE)
         self.assertEqual(self.load_mcu.current, MCU.OPERATING_CURRENT)
         self.assertEqual(self.load_mcu.energy_consumed, MCU.ENERGY_CONSUMPTION)
