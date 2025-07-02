@@ -2,8 +2,6 @@
 
 A Python-based simulation model for Battery-less Energy Harvesting Systems (BEHSs).
 
-> *Make sure you are using a **Python virtual environment** to run the project. Learn more about how to install and activate a virtual environment for your operating system [here](https://realpython.com/python-virtual-environments-a-primer/).*
-
 ## Description
 
 This model may be used to simulate and trace the energy flowing across a Battery-less Energy Harvesting System (BEHS) over time. 
@@ -11,6 +9,8 @@ This model may be used to simulate and trace the energy flowing across a Battery
 Given a group of pre-configured input parameters (e.g. energy supply, energy storage and load), we can visualize the energy behaviour of the system over an established time period.
 
 ## Getting Started
+
+> *Make sure you are using a **Python virtual environment** to run the project. Learn more about how to install and activate a virtual environment for your operating system [here](https://realpython.com/python-virtual-environments-a-primer/).*
 
 Download the project `.zip` or use Git clone, like below:
 
