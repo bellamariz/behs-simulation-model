@@ -21,13 +21,13 @@ def main():
     storage = Capacitor()
     load = Resistor()
 
-    # Writes output of simulation to local log file, 'output.log'
+    # Run simulation and write output to local log file, 'output.log'
     output.write_to_log(t_vector, supply, storage, load)
 
-    # Formats and writes output to local CSV file, 'output.csv'
+    # Run simulation and write output to local CSV file, 'output.csv'
     output.write_to_csv(t_vector, supply, storage, load)
 
-    # Formats and writes output to local Excel file, 'output.xlsx'
+    # Formats CSV and writes output to local Excel file, 'output.xlsx'
     output.write_to_excel()
 
     # Reads Excel file and plots the output
