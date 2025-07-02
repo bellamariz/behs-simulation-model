@@ -1,4 +1,3 @@
-from unittest.mock import mock_open, patch
 import unittest
 from src.load.load import Resistor, MCU
 

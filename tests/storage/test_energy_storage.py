@@ -1,6 +1,6 @@
 import unittest
 import math
-from unittest.mock import mock_open, patch
+from unittest.mock import patch
 from src.storage.energy_storage import Capacitor
 
 

@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import mock_open, patch
+from unittest.mock import patch
 from src.supply.energy_supply import ConstantSupply, HarvestingSupply
 
 
