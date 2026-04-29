@@ -1,5 +1,5 @@
 import unittest
-from src.load.load import Resistor, MCU
+from behs.load import Resistor, MCU
 
 
 class TestLoad(unittest.TestCase):

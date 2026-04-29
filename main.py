@@ -1,7 +1,7 @@
-import output
-from src.storage.energy_storage import Capacitor
-from src.supply.energy_supply import ConstantSupply
-from src.load.load import Resistor
+import output.output as output
+from behs.energystorage import Capacitor
+from behs.energysupply import ConstantSupply
+from behs.load import Resistor
 
 
 # Generates a time vector with a given start, end and interval

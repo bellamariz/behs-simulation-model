@@ -1,7 +1,7 @@
 import unittest
 import math
 from unittest.mock import patch
-from src.storage.energy_storage import Capacitor
+from behs.energystorage import Capacitor
 
 
 class TestEnergyStorage(unittest.TestCase):
