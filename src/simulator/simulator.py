@@ -1,7 +1,5 @@
-import output.output as output
-from behs.energystorage import Capacitor
-from behs.energysupply import ConstantSupply
-from behs.load import Resistor
+import output.output as out
+from input.input import Input
 
 
 def generate_t_vector(start, end, interval):
@@ -15,19 +13,24 @@ def run():
     # Generates a time vector
     t_vector = generate_t_vector(start=0, end=60, interval=0.25)
 
-    # Initializes the components of the simulation
-    supply = ConstantSupply(t_vector)
-    storage = Capacitor()
-    load = Resistor()
+    # Initializes the simulation input configuration
+    input_config = {
+        "supply": {"type": "constant"},
+        "storage": {"type": "capacitor"},
+        "load": {"type": "resistor"},
+    }
+    sim_input = Input(input_config, t_vector)
 
     # Run simulation and write output to local log file, 'output.log'
-    output.write_to_log(t_vector, supply, storage, load)
+    out.write_to_log(t_vector, sim_input.supply,
+                     sim_input.storage, sim_input.load)
 
     # Run simulation and write output to local CSV file, 'output.csv'
-    output.write_to_csv(t_vector, supply, storage, load)
+    out.write_to_csv(t_vector, sim_input.supply,
+                     sim_input.storage, sim_input.load)
 
     # Formats CSV and writes output to local Excel file, 'output.xlsx'
-    output.write_to_excel()
+    out.write_to_excel()
 
     # Reads Excel file and plots the output
-    output.plot()
+    out.plot()
