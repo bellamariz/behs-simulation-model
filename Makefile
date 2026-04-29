@@ -1,4 +1,4 @@
-.PHONY: test run clean
+.PHONY: lint test install run clean
 
 lint:
 	pylint $(shell git ls-files '*.py') --disable=missing-function-docstring,missing-module-docstring,missing-class-docstring,consider-using-min-builtin,too-few-public-methods,line-too-long,duplicate-code,useless-parent-delegation
@@ -15,3 +15,11 @@ run:
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	rm -rf .pytest_cache
+
+help:
+	@echo "Available targets:"
+	@echo " > lint    - Run code linter using pylint"
+	@echo " > test    - Run unit tests using pytest"
+	@echo " > install - Install project dependencies"
+	@echo " > run     - Run the application"
+	@echo " > clean   - Clean local pycache and pytest cache files"
