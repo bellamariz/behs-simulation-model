@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from behs.energysupply import ConstantSupply, HarvestingSupply
+from src.behs.energysupply import ConstantSupply, HarvestingSupply
 
 
 class TestEnergySupply(unittest.TestCase):

@@ -1,8 +1,8 @@
 import unittest
-from input.input import Input
-from behs.energysupply import ConstantSupply, HarvestingSupply
-from behs.energystorage import Capacitor
-from behs.load import Resistor, MCU
+from src.input.input import Input
+from src.behs.energysupply import ConstantSupply, HarvestingSupply
+from src.behs.energystorage import Capacitor
+from src.behs.load import Resistor, MCU
 
 _T_VECTOR = [i * 0.25 for i in range(241)]
 
