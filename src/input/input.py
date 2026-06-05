@@ -1,6 +1,6 @@
-import behs.energysupply as supply
-import behs.energystorage as storage
-import behs.load as load
+import src.behs.energysupply as supply
+import src.behs.energystorage as storage
+import src.behs.load as load
 
 _SUPPLY_REGISTRY = {
     "constant": supply.ConstantSupply,

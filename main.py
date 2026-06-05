@@ -1,8 +1,8 @@
-import src.simulator as simulator
+import src.simulator.simulator as simulator
 
 
 def main():
-    simulator.simulator.run()
+    simulator.run()
 
 
 if __name__ == "__main__":

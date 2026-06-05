@@ -1,5 +1,5 @@
-import output.output as out
-import input.input as inp
+import src.output.output as out
+import src.input.input as inp
 
 
 def generate_t_vector(start, end, interval):
