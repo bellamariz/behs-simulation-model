@@ -1,5 +1,5 @@
 import output.output as out
-from input.input import Input
+import input.input as inp
 
 
 def generate_t_vector(start, end, interval):
@@ -19,7 +19,7 @@ def run():
         "storage": {"type": "capacitor"},
         "load": {"type": "resistor"},
     }
-    sim_input = Input(input_config, t_vector)
+    sim_input = inp.Input(input_config, t_vector)
 
     # Run simulation and write output to local log file, 'output.log'
     out.write_to_log(t_vector, sim_input.supply,

@@ -1,19 +1,19 @@
-from behs.energysupply import *
-from behs.energystorage import *
-from behs.load import *
+import behs.energysupply as supply
+import behs.energystorage as storage
+import behs.load as load
 
 _SUPPLY_REGISTRY = {
-    "constant": ConstantSupply,
-    "harvesting": HarvestingSupply,
+    "constant": supply.ConstantSupply,
+    "harvesting": supply.HarvestingSupply,
 }
 
 _STORAGE_REGISTRY = {
-    "capacitor": Capacitor,
+    "capacitor": storage.Capacitor,
 }
 
 _LOAD_REGISTRY = {
-    "resistor": Resistor,
-    "mcu": MCU,
+    "resistor": load.Resistor,
+    "mcu": load.MCU,
 }
 
 

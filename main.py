@@ -1,4 +1,4 @@
-import simulator.simulator as simulator
+from simulator import simulator
 
 
 def main():
