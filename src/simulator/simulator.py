@@ -4,8 +4,10 @@ def generate_t_vector(start, end, interval):
 
 
 def run(t_vector, sim_input):
-    sim_output = {}
+    if sim_input is {}:
+        raise ValueError("simulation input cannot be empty")
 
+    sim_output = {}
     # Executes the simulation, updating the supply, storage and load at each time t
     for i, t in enumerate(t_vector):
         sim_input.supply.refresh(t_index=i)
