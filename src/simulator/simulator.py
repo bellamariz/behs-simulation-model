@@ -1,5 +1,3 @@
-
-
 def generate_t_vector(start, end, interval):
     return [start + i *
             interval for i in range(int((end - start) / interval) + 1)]
