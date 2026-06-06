@@ -4,7 +4,7 @@ def generate_t_vector(start, end, interval):
 
 
 def run(t_vector, sim_input):
-    if sim_input is {}:
+    if sim_input == {}:
         raise ValueError("simulation input cannot be empty")
 
     sim_output = {}
