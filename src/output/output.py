@@ -4,70 +4,58 @@ import matplotlib.pyplot as plt
 
 
 # Main function to write the output of the simulation to a log file
-def write_to_log(t_vector, supply, storage, load):
+def write_to_log(sim_output):
     with open("output.log", "w", encoding="utf-8") as logfile:
         print("Simulation started", file=logfile)
-        for i, t in enumerate(t_vector):
-            print(f"Time step {i}: t={t:.2f}s\n", file=logfile)
-
-            supply.refresh(t_index=i)
-            supply.print(t_index=i, file=logfile)
-
-            storage.refresh(t_time=t, v_supply=supply.voltage,
-                            load_energy_consumed=load.energy_consumed)
-            storage.print(t_index=i, file=logfile)
-
-            load.refresh(v_supply=storage.voltage,
-                         v_load_min=storage.V_LOAD_MIN)
-            load.print(t_index=i, file=logfile)
-
+        for t, data in sim_output.items():
+            print(f"Time step {t}: t={t:.3f}s\n", file=logfile)
+            print(
+                f"  Supply: type={data['supply']['type']}, voltage={data['supply']['voltage']:.5f}V", file=logfile)
+            print(
+                f"  Storage: type={data['storage']['type']}, voltage={data['storage']['voltage']:.5f}V, current={data['storage']['current']:.5f}A, energy_stored={data['storage']['energy_stored']:.5f}J", file=logfile)
+            print(
+                f"  Load: type={data['load']['type']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.5f}A, energy_consumed={data['load']['energy_consumed']:.5f}J, total_energy_consumed={data['load']['total_energy_consumed']:.5f}J\n", file=logfile)
             print("-" * 50, file=logfile)
 
 
 # Main function to write the output of the simulation to a CSV file
-def write_to_csv(t_vector, supply, storage, load):
+def write_to_csv(sim_output):
     with open("output.csv", "w", newline="", encoding="utf-8") as csvfile:
         fieldnames = ["step", "time", "component", "voltage", "current",
                       "energy_stored", "energy_consumed", "total_energy_consumed"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
-        for i, t in enumerate(t_vector):
-            supply.refresh(t_index=i)
-            storage.refresh(t_time=t, v_supply=supply.voltage,
-                            load_energy_consumed=load.energy_consumed)
-            load.refresh(v_supply=storage.voltage,
-                         v_load_min=storage.V_LOAD_MIN)
-
+        for t, data in sim_output.items():
             writer.writerow({
-                "step": i,
+                "step": t,
                 "time": t,
                 "component": "supply",
-                "voltage": supply.voltage,
+                "voltage": data['supply']['voltage'],
                 "current": "NaN",
                 "energy_stored": "NaN",
                 "energy_consumed": "NaN",
                 "total_energy_consumed": "NaN",
             })
             writer.writerow({
-                "step": i,
+                "step": t,
                 "time": t,
                 "component": "storage",
-                "voltage": storage.voltage,
-                "current": storage.current,
-                "energy_stored": storage.energy_stored,
+                "voltage": data['storage']['voltage'],
+                "current": data['storage']['current'],
+                "energy_stored": data['storage']['energy_stored'],
                 "energy_consumed": "NaN",
                 "total_energy_consumed": "NaN",
             })
             writer.writerow({
-                "step": i,
+                "step": t,
                 "time": t,
                 "component": "load",
-                "voltage": load.voltage,
-                "current": load.current,
+                "voltage": data['load']['voltage'],
+                "current": data['load']['current'],
                 "energy_stored": "NaN",
-                "energy_consumed": load.energy_consumed,
-                "total_energy_consumed": load.total_energy_consumed
+                "energy_consumed": data['load']['energy_consumed'],
+                "total_energy_consumed": data['load']['total_energy_consumed']
             })
 
 

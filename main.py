@@ -1,8 +1,90 @@
 import src.simulator.simulator as simulator
+import src.output.output as out
+import src.input.input as inp
+import src.interface.interface as ui
+import PySimpleGUI as sg
+
+
+def run_manual():
+    # Generates a time vector with a given start, end, and interval
+    t_vector = simulator.generate_t_vector(start=0, end=60, interval=0.25)
+
+    # Initializes the simulation input configuration
+    input_config = {
+        "supply": {"type": "constant"},
+        "storage": {"type": "capacitor"},
+        "load": {"type": "resistor"},
+    }
+    sim_input = inp.Input(input_config, t_vector)
+
+    # Run simulation for given input params
+    sim_output = simulator.run(t_vector, sim_input)
+
+    # Write output to local log file, 'output.log'
+    out.write_to_log(sim_output)
+
+    # Write output to local CSV file, 'output.csv'
+    out.write_to_csv(sim_output)
+
+    # Formats CSV and writes output to local Excel file, 'output.xlsx'
+    out.write_to_excel()
+
+    # Reads Excel file and plots the output
+    out.plot()
+
+
+def run_ui():
+    window = ui.build_input_form()
+
+    while True:
+        event, values = window.read()
+
+        if event == sg.WINDOW_CLOSED or event == 'Cancel':
+            break
+
+        if event == 'Run Simulation':
+            try:
+                config = ui.get_config_from_ui(values)
+
+                # Generates a time vector with a given start, end, and interval
+                t_vector = simulator.generate_t_vector(
+                    start=config['time']['start'],
+                    end=config['time']['end'],
+                    interval=config['time']['interval']
+                )
+
+                # Initializes the simulation input configuration
+                sim_input = inp.Input(config, t_vector)
+
+                # Run simulation for given input params
+                sim_output = simulator.run(t_vector, sim_input)
+                sg.popup_ok('Simulation run successfully!')
+
+                # Write output to local log file, 'output.log'
+                out.write_to_log(sim_output)
+
+                # Write output to local CSV file, 'output.csv'
+                out.write_to_csv(sim_output)
+
+                # Formats CSV and writes output to local Excel file, 'output.xlsx'
+                out.write_to_excel()
+
+                # Reads Excel file and plots the output
+                out.plot()
+
+                break
+            except Exception as e:
+                sg.popup_error(f'Error: {str(e)}')
+
+    window.close()
 
 
 def main():
-    simulator.run()
+    # Uncomment the line below to run the simulation with a manual configuration
+    # run_manual()
+
+    # Uncomment the line below to run the simulation with a UI for input configuration
+    run_ui()
 
 
 if __name__ == "__main__":
