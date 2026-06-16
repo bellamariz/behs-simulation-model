@@ -7,7 +7,7 @@ import PySimpleGUI as sg
 
 def run_manual():
     # Generates a time vector with a given start, end, and interval
-    t_vector = simulator.generate_t_vector(start=0, end=60, interval=0.25)
+    t_vector = simulator.generate_t_vector(start=0, end=360, interval=0.25)
 
     # Initializes the simulation input configuration
     input_config = {
@@ -81,10 +81,10 @@ def run_ui():
 
 def main():
     # Uncomment the line below to run the simulation with a manual configuration
-    # run_manual()
+    run_manual()
 
     # Uncomment the line below to run the simulation with a UI for input configuration
-    run_ui()
+    # run_ui()
 
 
 if __name__ == "__main__":
