@@ -81,13 +81,14 @@ class Capacitor(EnergyStorage):
 
     # Voltage across capacitor, Vc(t) at instant t
     def calculate_voltage(self, t_time, v_supply):
-        i_supply = v_supply / self.R_SERIES
-        if i_supply > self.I_MAX_SUPPLY:
-            print(
-                f"Supply current exceeds maximum allowed of {self.I_MAX_SUPPLY}A!")
-            self.voltage = 0.0
-            self.status = "idle"
-            return self.voltage
+        # TODO: Consider max supply current
+        # i_supply = v_supply / self.R_SERIES
+        # if i_supply > self.I_MAX_SUPPLY:
+        #     print(
+        #         f"Supply current exceeds maximum allowed of {self.I_MAX_SUPPLY}A!")
+        #     self.voltage = 0.0
+        #     self.status = "idle"
+        #     return self.voltage
 
         if self.status == "idle":
             self.status = "charging"
