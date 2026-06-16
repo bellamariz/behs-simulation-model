@@ -12,7 +12,7 @@ def write_to_log(sim_output):
             print(
                 f"  Supply: type={data['supply']['type']}, voltage={data['supply']['voltage']:.5f}V", file=logfile)
             print(
-                f"  Storage: type={data['storage']['type']}, voltage={data['storage']['voltage']:.5f}V, current={data['storage']['current']:.5f}A, energy_stored={data['storage']['energy_stored']:.5f}J", file=logfile)
+                f"  Storage: type={data['storage']['type']}, status={data['storage']['status']}, voltage={data['storage']['voltage']:.5f}V, current={data['storage']['current']:.5f}A, energy_stored={data['storage']['energy_stored']:.5f}J", file=logfile)
             print(
                 f"  Load: type={data['load']['type']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.5f}A, energy_consumed={data['load']['energy_consumed']:.5f}J, total_energy_consumed={data['load']['total_energy_consumed']:.5f}J\n", file=logfile)
             print("-" * 50, file=logfile)

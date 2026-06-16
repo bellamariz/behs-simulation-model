@@ -23,6 +23,7 @@ def run(t_vector, sim_input):
             },
             "storage": {
                 "type": sim_input.storage.type,
+                "status": sim_input.storage.status,
                 "voltage": sim_input.storage.voltage,
                 "current": sim_input.storage.current,
                 "energy_stored": sim_input.storage.energy_stored,
