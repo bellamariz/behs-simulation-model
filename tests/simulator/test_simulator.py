@@ -48,7 +48,8 @@ class TestSimulatorRun(unittest.TestCase):
     def test_run_validate_output_data(self):
         output = simulator.run(self.t_vector, self.sim_input)
         supply_keys = {"type", "voltage"}
-        storage_keys = {"type", "voltage", "current", "energy_stored"}
+        storage_keys = {"type", "status",
+                        "voltage", "current", "energy_stored"}
         load_keys = {"type", "voltage", "current",
                      "energy_consumed", "total_energy_consumed"}
 
@@ -60,6 +61,7 @@ class TestSimulatorRun(unittest.TestCase):
 
             self.assertEqual(set(data["storage"].keys()), storage_keys)
             self.assertIsInstance(data["storage"]["type"], str)
+            self.assertIsInstance(data["storage"]["status"], str)
             self.assertIsInstance(
                 data["storage"]["voltage"], (float))
             self.assertIsInstance(
