@@ -59,9 +59,9 @@ class Load(ABC):
 # Class Resistor for the BEHS simulation model, inheriting from Load Class
 # It represents a resistor, consuming energy based on its resistance
 class Resistor(Load):
-    ENERGY_CONSUMPTION = 0.001  # Assumed constant for simplicity
+    ENERGY_CONSUMPTION = 0.25  # Resistor power rating in watts (J/s)
     OPERATING_VOLTAGE = 1.0  # Minimum operating voltage
-    RESISTANCE = 1000
+    RESISTANCE = 1600
 
     def __init__(self):
         self.type = "resistor"
@@ -121,7 +121,7 @@ class MCU(Load):
 
     def calculate_energy_consumed(self, v_supply, v_load_min):
         if (v_supply >= self.operating_voltage) and (v_supply >= v_load_min):
-            return self.ENERGY_CONSUMPTION
+            return self.ENERGY_CONSUMPTION * 0.25
         return 0.0
 
     def refresh(self, v_supply, v_load_min):
