@@ -161,8 +161,9 @@ The configuration parameters are:
 | **v_oper_low** | `float` | Nominal operating voltage for `"low_power"` mode. |
 | **v_oper_active** | `float` | Nominal operating voltage for `"active"` mode. |
 | **v_max** | `float` | Maximum operating voltage. |
+| **clock** | `string` | Clock frequency for the CPU, will influence the energy cost for each operating mode. |
+| **modes** | `dict` | List of CPU operating modes and their energy cost (in A) - cost for `"active"` mode depends on the clock frequency. |
 | **program** | `string` | Path to the script file that represents software being executed by the MCU. |
-| **load** | `string` | Path to the text file that defines the power consumption of tasks and CPU. |
 
 For example, if using a [TI MSP430FR5994](https://www.ti.com/lit/ds/slase54d/slase54d.pdf?ts=1781671720297) MCU, with [configurable power modes](https://www.ti.com/lit/ug/tiduc02/tiduc02.pdf?ts=1781611206249), the configuration is:
 
@@ -175,12 +176,76 @@ For example, if using a [TI MSP430FR5994](https://www.ti.com/lit/ds/slase54d/sla
     "v_oper_low": 2.2,
     "v_oper_active": 3.0,
     "v_max": 3.6,
+    "clock": "4MHZ",
+    "modes": {
+      "shutdown": 0,
+      "low_power": 0.000092,
+      "active": {
+        "1MHz": 0.000120,
+        "4MHz": 0.000480,
+        "8MHz": 0.000960,
+        "12MHz": 0.001440,
+        "16MHz": 0.001920,
+      },
+    },
     "program": "src/input/files/program01.script",
-    "load": "src/input/files/load.txt",
   }
 }
 ```
 
-The `MCU` class represents a load that collects, processes and trasmits data. The amount of energy being consumed at each interval depends on the power mode of the MCU (`"active"`, `"low_power"` or `"shutdown"`) and on the tasks being executed during this interval.
+The `MCU` class represents a load that collects, processes and trasmits data. The simulator considers two types of operations to calculate the consumed energy: CPU and tasks. For CPU, consumption depends on the current power mode and the configured clock frequency. For tasks, the simulator provides a default list of actions, each with their own estimated power consumption.
 
-The user MUST include at least ONE script file that contains the program sequence (i.e. list of tasks) that will be executed by the MCU (**program** file). The simulator provides a default list of tasks, each with their own estimated power consumption, but this input is also configurable by the user via the **load** file. This file can be used to define the energy consumption of each task and the CPU, depending on the clock and power mode (provided in the datasheet).
+```json
+{
+  "actions": [
+    {
+      "action": "sleeping",
+      "instruction": "SLEEP",
+      "cost": 0.00003
+    },
+    {
+      "action": "sensing",
+      "instruction": "SENSE",
+      "cost": 0.006
+    },
+    {
+      "action": "transmitting",
+      "instruction": "TX_ON",
+      "cost": 0.03
+    },
+    {
+      "action": "receiving",
+      "instruction": "RX_ON",
+      "cost": 0.027
+    },
+    {
+      "action": "processing",
+      "instruction": "CPU_PROC",
+    }
+  ]
+}
+```
+
+Lastly, the user MUST include at least ONE new script file that contains the program sequence (i.e. list of tasks) that will be executed by the MCU (**program** file). This script file will represent the CPU and task operations over the simulation window, emulating real software.
+
+Each line of the script must be an instruction, followed by the time it took in milliseconds. For example:
+
+```txt
+LOOP
+  SLEEP 1000
+  SENSE 2500
+  CPU_PROC
+  TX_ON 5000
+END
+```
+
+Considering a simulation step of 250ms, and a CPU on `"active"` mode and a clock of 4MHz, for example, this script translates to:
+
+| # | Instruction | Duration (ms) | Cost (mA) |
+|---|---|---|---|
+| 0 | `SLEEP` | 1000 | 0.012 |
+| 0 | `SENSE` | 2500 | 60 |
+| 0 | `CPU_PROC` | ~10 clocks | 4.8 |
+| 0 | `TX_ON` | 5000 | 600 |
+
+Where the total cost of each instruction is calculated by `(duration / t_step) * cost` - with except for the CPU operation, which is `#clocks * cost`.
