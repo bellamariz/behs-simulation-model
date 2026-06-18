@@ -244,8 +244,87 @@ Considering a simulation step of 250ms, and a CPU on `"active"` mode and a clock
 | # | Instruction | Duration (ms) | Cost (mA) |
 |---|---|---|---|
 | 0 | `SLEEP` | 1000 | 0.012 |
-| 0 | `SENSE` | 2500 | 60 |
-| 0 | `CPU_PROC` | ~10 clocks | 4.8 |
-| 0 | `TX_ON` | 5000 | 600 |
+| 1 | `SENSE` | 2500 | 60 |
+| 2 | `CPU_PROC` | ~10 clocks | 4.8 |
+| 3 | `TX_ON` | 5000 | 600 |
 
 Where the total cost of each instruction is calculated by `(duration / t_step) * cost` - with except for the CPU operation, which is `#clocks * cost`.
+
+## 3. Full Example Configuration File
+
+```json
+{
+  "simulation": {
+    "duration": 120,
+    "step": 0.25
+  },
+  "supply":{
+    "type": "constant",
+    "v_base": 8.0
+  },
+  "storage": {
+    "type": "capacitor",
+    "capacity": 0.1,
+    "i_supply_max": 0.05,
+    "v_oper_max": 5.5,
+    "r_charge": 510
+  },
+  "load": {
+    "type": "mcu",
+    "v_min": 1.8,
+    "v_wake_up": 2,
+    "v_oper_low": 2.2,
+    "v_oper_active": 3.0,
+    "v_max": 3.6,
+    "modes": [
+      {
+        "name": "shutdown",
+        "cost": 0
+      },
+      {
+        "name": "low_power",
+        "cost": {
+          "1MHz": 0.000075,
+          "4MHz": 0.000105,
+          "8MHz": 0.000165,
+          "12MHz": 0.000240,
+          "16MHz": 0.000220
+        }
+      },
+      {
+        "name": "active",
+        "cost": {
+          "1MHz": 0.000225,
+          "4MHz": 0.000665,
+          "8MHz": 0.001275,
+          "12MHz": 0.001550,
+          "16MHz": 0.001970
+        }
+      }
+    ],
+    "program": "src/input/files/program01.script"
+  },
+  "actions": [
+    {
+      "action": "sensor_disabled",
+      "instruction": "SENSING_OFF",
+      "cost": 0
+    },
+    {
+      "action": "sensor_enabled",
+      "instruction": "SENSING_ON",
+      "cost": 0.006
+    },
+    {
+      "action": "transmitting",
+      "instruction": "TX_ON",
+      "cost": 0.03
+    },
+    {
+      "action": "receiving",
+      "instruction": "RX_ON",
+      "cost": 0.027
+    }
+  ]
+}
+```
