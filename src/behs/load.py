@@ -38,8 +38,7 @@ class Load(ABC):
         self.current = self.calculate_current(v_supply, v_load_min)
         self.energy_consumed = self.calculate_energy_consumed(
             v_supply, v_load_min)
-        self.total_energy_consumed += self.calculate_energy_consumed(
-            v_supply, v_load_min)
+        self.total_energy_consumed += self.energy_consumed
 
     # Prints the load's state at a given time index
     @abstractmethod
