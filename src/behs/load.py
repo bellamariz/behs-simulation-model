@@ -89,6 +89,9 @@ class Resistor(Load):
         return 0.0
 
     def refresh(self, v_supply):
+        if v_supply > self.V_MAX:
+            raise ValueError(
+                f"Supply voltage {v_supply:.5f}V exceeds the resistor's power rating {self.V_MAX:.5f}V!")
         super().refresh(v_supply)
 
     def print(self, t_index, file):
@@ -134,7 +137,7 @@ class MCU(Load):
         if v_supply > self.V_MAX:
             self.mode = "shutdown"
             raise ValueError(
-                f"Supply voltage {v_supply:.5f}V exceeds the resistor's power rating {self.V_MAX:.5f}V!")
+                f"Supply voltage {v_supply:.5f}V exceeds the MCU's max voltage {self.V_MAX:.5f}V!")
 
         if v_supply <= self.V_MIN:
             self.mode = "shutdown"

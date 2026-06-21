@@ -54,11 +54,12 @@ class EnergyStorage(ABC):
 # Class Capacitor for the BEHS simulation model, inheriting from EnergyStorage Class
 # It represents a capacitor, with its equations considering a RC circuit model
 class Capacitor(EnergyStorage):
-    def __init__(self, config, v_load_min):
+    def __init__(self, config, v_load_min, v_load_max):
         self.CAPACITANCE = config.get("capacitance")
         self.R_SERIES = config.get("r_charge")
         self.V_MAX = config.get("v_oper_max")
         self.V_LOAD_MIN = v_load_min
+        self.V_LOAD_MAX = v_load_max
         self.TIME_CONSTANT = self.CAPACITANCE * self.R_SERIES
 
         self.type = config.get("type")
@@ -89,9 +90,9 @@ class Capacitor(EnergyStorage):
         elapsed = t_time - self.t_ref
 
         if self.status == "charging":
-            if self.voltage >= self.V_MAX:
+            if self.voltage >= self.V_LOAD_MAX or self.voltage >= self.V_MAX:
                 self.status = "ready"
-                return self.V_MAX
+                return min(self.V_LOAD_MAX, self.V_MAX)
             return self.charging_voltage(elapsed, v_supply)
 
         if self.status == "ready":

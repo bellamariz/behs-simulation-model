@@ -61,4 +61,4 @@ class Input:
         self.supply = SUPPLY_REGISTRY[supply_type](supply_cfg, self.t_vector)
         self.load = LOAD_REGISTRY[load_type](load_cfg, t_step)
         self.storage = STORAGE_REGISTRY[storage_type](
-            storage_cfg, self.load.v_on)
+            storage_cfg, self.load.v_on, self.load.V_MAX)
