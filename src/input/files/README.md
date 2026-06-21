@@ -128,7 +128,6 @@ The configuration parameters are:
 | **type** | `string` | Type of load, value is `"resistor"`. |
 | **resistance** | `float` | Resistance value (in Ohms). |
 | **p_rating** | `float` | Resistor power rating (in Watts). |
-| **v_load_min** | `float` | Mininum storage voltage necessary for load to "begin" consuming energy. |
 
 For example, if considering an actual resistor [CF14JT1K60 1.6kOhms](https://www.digikey.com.br/en/products/detail/stackpole-electronics-inc/CF14JT1K60/1741251), we have the following:
 
@@ -138,7 +137,6 @@ For example, if considering an actual resistor [CF14JT1K60 1.6kOhms](https://www
     "type": "resistor",
     "resistance": 1600,
     "p_rating": 0.25,
-    "v_load_min": 1.2
   }
 }
 ```
