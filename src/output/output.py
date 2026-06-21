@@ -12,16 +12,16 @@ def write_to_log(sim_output):
             print(
                 f"  Supply: type={data['supply']['type']}, voltage={data['supply']['voltage']:.5f}V", file=logfile)
             print(
-                f"  Storage: type={data['storage']['type']}, voltage={data['storage']['voltage']:.5f}V, current={data['storage']['current']:.5f}A, energy_stored={data['storage']['energy_stored']:.5f}J", file=logfile)
+                f"  Storage: type={data['storage']['type']}, status={data['storage']['status']}, voltage={data['storage']['voltage']:.5f}V, current={data['storage']['current']:.5f}A, energy_stored={data['storage']['energy_stored']:.5f}J", file=logfile)
             print(
-                f"  Load: type={data['load']['type']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.5f}A, energy_consumed={data['load']['energy_consumed']:.5f}J, total_energy_consumed={data['load']['total_energy_consumed']:.5f}J\n", file=logfile)
+                f"  Load: type={data['load']['type']}, status={data['load']['mode']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.5f}A, energy_consumed={data['load']['energy_consumed']:.5f}J, total_energy_consumed={data['load']['total_energy_consumed']:.5f}J\n", file=logfile)
             print("-" * 50, file=logfile)
 
 
 # Main function to write the output of the simulation to a CSV file
 def write_to_csv(sim_output):
     with open("output.csv", "w", newline="", encoding="utf-8") as csvfile:
-        fieldnames = ["step", "time", "component", "voltage", "current",
+        fieldnames = ["step", "time", "component", "status", "voltage", "current",
                       "energy_stored", "energy_consumed", "total_energy_consumed"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -31,6 +31,7 @@ def write_to_csv(sim_output):
                 "step": t,
                 "time": t,
                 "component": "supply",
+                "status": "NaN",
                 "voltage": data['supply']['voltage'],
                 "current": "NaN",
                 "energy_stored": "NaN",
@@ -41,6 +42,7 @@ def write_to_csv(sim_output):
                 "step": t,
                 "time": t,
                 "component": "storage",
+                "status": data['storage']['status'],
                 "voltage": data['storage']['voltage'],
                 "current": data['storage']['current'],
                 "energy_stored": data['storage']['energy_stored'],
@@ -51,6 +53,7 @@ def write_to_csv(sim_output):
                 "step": t,
                 "time": t,
                 "component": "load",
+                "status": data['load']['mode'],
                 "voltage": data['load']['voltage'],
                 "current": data['load']['current'],
                 "energy_stored": "NaN",

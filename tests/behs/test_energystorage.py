@@ -1,6 +1,5 @@
 import unittest
 import math
-from unittest.mock import patch
 from src.behs.energystorage import Capacitor
 
 
@@ -28,44 +27,43 @@ class TestCapacitor(unittest.TestCase):
         actual_voltage = self.storage_capacitor.charging_voltage(
             t_time, v_supply)
 
-        # Using assertAlmostEqual to compare floats without precision issues
         self.assertAlmostEqual(actual_voltage, expected_voltage, places=5)
 
     def test_charging_voltage_zero_time(self):
+        # When t = 0, voltage --> 0
         actual_voltage = self.storage_capacitor.charging_voltage(
             t_time=0.0, v_supply=10.0)
 
         self.assertEqual(actual_voltage, 0.0)
 
     def test_charging_voltage_long_time(self):
-        # After a long time, capacitor voltage should approach v_supply
+        # When t --> infinity, voltage --> V_MAX
         actual_voltage = self.storage_capacitor.charging_voltage(
             t_time=1000.0, v_supply=10.0)
 
-        # Using assertAlmostEqual to compare floats without precision issues
         self.assertAlmostEqual(actual_voltage, 10.0, places=3)
 
     def test_discharging_voltage(self):
-        self.storage_capacitor.voltage = 5.0
+        self.storage_capacitor.v_discharge_init = 5.0
         t_time = 1.0
 
-        expected_voltage = self.storage_capacitor.voltage * \
+        expected_voltage = self.storage_capacitor.v_discharge_init * \
             math.exp(-t_time / Capacitor.TIME_CONSTANT)
         actual_voltage = self.storage_capacitor.discharging_voltage(t_time)
 
-        # Using assertAlmostEqual to compare floats without precision issues
         self.assertAlmostEqual(actual_voltage, expected_voltage, places=5)
 
     def test_discharging_voltage_zero_time(self):
-        self.storage_capacitor.voltage = 5.0
+        # When t = 0, voltage --> V_MAX
+        self.storage_capacitor.v_discharge_init = 5.0
 
         actual_voltage = self.storage_capacitor.discharging_voltage(t_time=0.0)
 
         self.assertEqual(actual_voltage, 5.0)
 
     def test_discharging_voltage_long_time(self):
-        # After a long time, capacitor voltage should approach 0V
-        self.storage_capacitor.voltage = 5.0
+        # When t --> infinity, voltage --> 0
+        self.storage_capacitor.v_discharge_init = 5.0
 
         actual_voltage = self.storage_capacitor.discharging_voltage(
             t_time=1000.0)
@@ -73,8 +71,10 @@ class TestCapacitor(unittest.TestCase):
         # Using assertAlmostEqual to compare floats without precision issues
         self.assertAlmostEqual(actual_voltage, 0.0, places=3)
 
-    def test_calculate_voltage_charging_below_load_min(self):
-        # Capacitor voltage below V_LOAD_MIN
+    def test_calculate_voltage_status_charging(self):
+        self.storage_capacitor.status = "charging"
+        self.storage_capacitor.t_ref = 0.0
+        self.storage_capacitor.v_charge_init = 2.0
         self.storage_capacitor.voltage = 2.0
 
         expected_voltage = self.storage_capacitor.charging_voltage(
@@ -82,71 +82,93 @@ class TestCapacitor(unittest.TestCase):
         actual_voltage = self.storage_capacitor.calculate_voltage(
             t_time=1.0, v_supply=10.0)
 
-        # Using assertAlmostEqual to compare floats without precision issues
         self.assertAlmostEqual(actual_voltage, expected_voltage, places=5)
 
-    def test_calculate_voltage_discharging_above_load_min(self):
-        # Capacitor voltage above V_LOAD_MIN
-        self.storage_capacitor.voltage = 6.0
+    def test_calculate_voltage_status_discharging(self):
+        self.storage_capacitor.status = "discharging"
+        self.storage_capacitor.t_ref = 0.0
+        self.storage_capacitor.v_discharge_init = 4.0
+        self.storage_capacitor.voltage = 4.0
 
-        expected_voltage = self.storage_capacitor.voltage - \
-            self.storage_capacitor.discharging_voltage(t_time=1.0)
+        expected_voltage = self.storage_capacitor.discharging_voltage(
+            t_time=1.0)
         actual_voltage = self.storage_capacitor.calculate_voltage(
             t_time=1.0, v_supply=10.0)
 
-        # Using assertAlmostEqual to compare floats without precision issues
         self.assertAlmostEqual(actual_voltage, expected_voltage, places=5)
 
-    @patch('builtins.print')
-    def test_calculate_voltage_at_max_capacity(self, mock_print):
-        self.storage_capacitor.voltage = 12.0
+    def test_calculate_voltage_charging_to_ready(self):
+        # When voltage charges to V_MAX, status changes to "ready"
+        self.storage_capacitor.status = "charging"
+        self.storage_capacitor.t_ref = 0.0
+        self.storage_capacitor.v_charge_init = Capacitor.V_MAX
+        self.storage_capacitor.voltage = Capacitor.V_MAX
 
-        expected_voltage = self.storage_capacitor.calculate_voltage(
+        actual_voltage = self.storage_capacitor.calculate_voltage(
             t_time=1.0, v_supply=10.0)
 
-        self.assertEqual(expected_voltage, Capacitor.V_STORAGE_MAX)
-        mock_print.assert_called_once_with(
-            f"Energy storage is at maximum capacity {Capacitor.V_STORAGE_MAX}V")
+        self.assertEqual(actual_voltage, Capacitor.V_MAX)
+        self.assertEqual(self.storage_capacitor.status, "ready")
 
-    def test_calculate_current_charging_below_load_min(self):
-        # Capacitor voltage below V_LOAD_MIN
+    def test_calculate_voltage_discharging_to_idle(self):
+        # When voltage drops to V_LOAD_MIN, status transitions to "idle"
+        self.storage_capacitor.status = "discharging"
+        self.storage_capacitor.t_ref = 0.0
+        self.storage_capacitor.v_discharge_init = Capacitor.V_LOAD_MIN
+        self.storage_capacitor.voltage = Capacitor.V_LOAD_MIN
+
+        actual_voltage = self.storage_capacitor.calculate_voltage(
+            t_time=1.0, v_supply=10.0)
+
+        self.assertLessEqual(actual_voltage, Capacitor.V_LOAD_MIN)
+        self.assertEqual(self.storage_capacitor.status, "idle")
+
+    def test_calculate_current_charging(self):
+        self.storage_capacitor.status = "charging"
+        self.storage_capacitor.t_ref = 0.0
+        self.storage_capacitor.v_charge_init = 2.0
         self.storage_capacitor.voltage = 2.0
 
         t_time = 1.0
         v_supply = 10.0
 
-        expected_current = (v_supply / Capacitor.RESISTANCE) * \
+        expected_current = ((v_supply - 2.0) / Capacitor.R_SERIES) * \
             math.exp(-t_time / Capacitor.TIME_CONSTANT)
         actual_current = self.storage_capacitor.calculate_current(
             t_time, v_supply)
         self.assertAlmostEqual(actual_current, expected_current, places=5)
 
-    def test_calculate_current_discharging_above_load_min(self):
-        # Capacitor voltage above V_LOAD_MIN
+    def test_calculate_current_discharging(self):
+        self.storage_capacitor.status = "discharging"
+        self.storage_capacitor.t_ref = 0.0
+        self.storage_capacitor.v_discharge_init = 6.0
         self.storage_capacitor.voltage = 6.0
 
         t_time = 1.0
         v_supply = 10.0
 
-        expected_current = (self.storage_capacitor.voltage / Capacitor.RESISTANCE) * \
+        expected_current = (6.0 / Capacitor.R_SERIES) * \
             math.exp(-t_time / Capacitor.TIME_CONSTANT)
         actual_current = self.storage_capacitor.calculate_current(
             t_time, v_supply)
 
         self.assertAlmostEqual(actual_current, expected_current, places=5)
 
-    def test_calculate_current_zero_time(self):
-        self.storage_capacitor.voltage = 2.0
+    def test_calculate_current_zero_elapsed_time(self):
+        self.storage_capacitor.status = "charging"
+        self.storage_capacitor.t_ref = 0.0
+        self.storage_capacitor.v_charge_init = 0.0
+        self.storage_capacitor.voltage = 0.0
 
-        expected_current = 10.0 / Capacitor.RESISTANCE
+        expected_current = 10.0 / Capacitor.R_SERIES
         actual_current = self.storage_capacitor.calculate_current(
             t_time=0.0, v_supply=10.0)
 
         self.assertAlmostEqual(actual_current, expected_current, places=5)
 
     def test_calculate_energy_stored_charging(self):
-        # Assume capacitor is in charging scenario
-        # Set initial voltage below V_LOAD_MIN
+        # Assuming capacitor is in "charging" status
+        # Initial voltage below V_LOAD_MIN
         self.storage_capacitor.voltage = 3.0
         load_energy_consumed = 0.01
 
@@ -158,8 +180,9 @@ class TestCapacitor(unittest.TestCase):
         self.assertAlmostEqual(actual_energy, expected_energy, places=5)
 
     def test_calculate_energy_stored_discharging(self):
-        # Assume capacitor is in discharging scenario
-        # Set initial voltage above V_LOAD_MIN
+        # Assume capacitor is in "discharging" status
+        # Initial voltage above V_LOAD_MIN
+        self.storage_capacitor.status = "discharging"
         self.storage_capacitor.voltage = 6.0
         load_energy_consumed = 0.02
         capacitor_energy = (1/2) * Capacitor.CAPACITANCE * \
@@ -181,23 +204,24 @@ class TestCapacitor(unittest.TestCase):
         self.assertEqual(actual_energy, 0.0)
 
     def test_refresh(self):
-        # Assume capacitor is in charging scenario
-        # Set initial voltage below V_LOAD_MIN
+        self.storage_capacitor.status = "charging"
+        self.storage_capacitor.t_ref = 0.0
+        self.storage_capacitor.v_charge_init = 2.0
         self.storage_capacitor.voltage = 2.0
+
         t_time = 1.0
         v_supply = 10.0
         load_energy_consumed = 0.01
 
         self.storage_capacitor.refresh(t_time, v_supply, load_energy_consumed)
 
-        expected_voltage = self.storage_capacitor.charging_voltage(
-            t_time, v_supply)
-        expected_current = (v_supply / Capacitor.RESISTANCE) * \
+        expected_voltage = v_supply + (2.0 - v_supply) * \
+            math.exp(-t_time / Capacitor.TIME_CONSTANT)
+        expected_current = ((v_supply - 2.0) / Capacitor.R_SERIES) * \
             math.exp(-t_time / Capacitor.TIME_CONSTANT)
         expected_energy = (1/2) * Capacitor.CAPACITANCE * \
             (self.storage_capacitor.voltage ** 2)
 
-        # Using assertAlmostEqual to compare floats without precision issues
         self.assertAlmostEqual(
             self.storage_capacitor.voltage, expected_voltage, places=5)
         self.assertAlmostEqual(
