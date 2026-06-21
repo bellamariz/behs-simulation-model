@@ -86,7 +86,7 @@ def plot():
 
     # Plot all attributes for a component, in separate subplots, but same window
     plot_all_attributes_for_component(
-        df, components[1], [["voltage", "V"], ["current", "A"], ["energy_stored", "J"]])
+        df, components[1], [["voltage", "V"], ["current", "A"], ["energy", "J"]])
     plt.show()
 
     plot_all_attributes_for_component(
