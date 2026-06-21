@@ -23,8 +23,6 @@ from abc import ABC, abstractmethod
 # Class EnergySupply for the BEHS simulation model
 # It represents the energy supply, a circuit component that provides energy to the system
 class EnergySupply(ABC):
-    MAX_SUPPLY_VOLTAGE = 10  # Assumes max supply voltage of 10V
-
     @abstractmethod
     def __init__(self):
         self.type: str
@@ -50,10 +48,12 @@ class EnergySupply(ABC):
 # Class ConstantSupply for the BEHS simulation model, inheriting from EnergySupply Class
 # It represents a constant voltage supply
 class ConstantSupply(EnergySupply):
-    def __init__(self, t_vector):
-        self.type = "constant"
+    def __init__(self, config, t_vector):
+        v_base = config.get("v_base")
+
+        self.type = config.get("type")
         self.voltage = 0.0
-        self.profile = [8.0] * len(t_vector)
+        self.profile = [v_base] * len(t_vector)
 
     def refresh(self, t_index):
         super().refresh(t_index)
@@ -63,13 +63,37 @@ class ConstantSupply(EnergySupply):
 
 
 # Class HarvestingSupply for the BEHS simulation model, inheriting from EnergySupply Class
-# It represents a variable voltage supply, between 0 and MAX_SUPPLY_VOLTAGE
+# It represents a variable voltage supply loaded from a real energy harvesting dataset
 class HarvestingSupply(EnergySupply):
-    def __init__(self, t_vector):
-        self.type = "harvesting"
+    def __init__(self, config, t_vector):
+        profile = []
+        sampling_period = config.get("sampling_period")
+        filename = config.get("filename")
+        if filename:
+            profile = self._load_and_resample(
+                filename, sampling_period, t_vector)
+        else:
+            profile = [random.uniform(0.0, 10.0)
+                       for _ in range(len(t_vector))]
+
+        self.type = config.get("type")
         self.voltage = 0.0
-        self.profile = [random.uniform(0.0, self.MAX_SUPPLY_VOLTAGE)
-                        for _ in range(len(t_vector))]
+        self.profile = profile
+
+    def _load_and_resample(self, filename, sampling_period, t_vector):
+        with open(filename, "r") as f:
+            raw = [float(line.strip()) for line in f if line.strip()]
+        if not raw:
+            return [0.0] * len(t_vector)
+        result = []
+        for t in t_vector:
+            # Wrap around dataset if simulation is longer than the dataset
+            raw_idx = (t / sampling_period) % len(raw)
+            lo = int(raw_idx)
+            hi = (lo + 1) % len(raw)
+            frac = raw_idx - lo
+            result.append(raw[lo] + frac * (raw[hi] - raw[lo]))
+        return result
 
     def refresh(self, t_index):
         super().refresh(t_index)

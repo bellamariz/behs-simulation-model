@@ -8,7 +8,7 @@ class EnergyStorage(ABC):
     @abstractmethod
     def __init__(self):
         self.type: str
-        self.status: str  # "charging", "ready", "discharging" or "idle"
+        self.status: str
         self.voltage: float  # voltage across the energy storage, in Voltz
         self.current: float  # current flowing through the energy storage, in Amperes
         self.energy_stored: float  # energy stored by the buffer, in Joules
@@ -30,7 +30,7 @@ class EnergyStorage(ABC):
     def calculate_energy_stored(self, load_energy_consumed: float) -> float:
         pass
 
-    # Refreshes the storage's state based on 'v_supply' and 'v_load_min'
+    # Refreshes the storage's state based on 'v_supply' and 'load_energy_consumed'
     @abstractmethod
     def refresh(self, t_time: float, v_supply: float, load_energy_consumed: float) -> None:
         self.voltage = self.calculate_voltage(t_time, v_supply)
@@ -54,19 +54,18 @@ class EnergyStorage(ABC):
 # Class Capacitor for the BEHS simulation model, inheriting from EnergyStorage Class
 # It represents a capacitor, with its equations considering a RC circuit model
 class Capacitor(EnergyStorage):
-    CAPACITANCE = 0.1
-    R_SERIES = 510
-    I_MAX_SUPPLY = 0.05
-    V_MAX = 5.5
-    V_LOAD_MIN = 1.8
-    TIME_CONSTANT = CAPACITANCE * R_SERIES
+    def __init__(self, config, v_load_min):
+        self.CAPACITANCE = config.get("capacitance")
+        self.R_SERIES = config.get("r_charge")
+        self.V_MAX = config.get("v_oper_max")
+        self.V_LOAD_MIN = v_load_min
+        self.TIME_CONSTANT = self.CAPACITANCE * self.R_SERIES
 
-    def __init__(self):
-        self.type = "capacitor"
-        self.status = "idle"
+        self.type = config.get("type")
+        self.status = "idle"  # "charging", "ready", "discharging" or "idle"
         self.voltage = 0.0
         self.current = 0.0
-        self.energy = 0.0
+        self.energy_stored = 0.0
         self.t_ref = 0
         self.v_discharge_init = 0.0
         self.v_charge_init = 0.0
@@ -81,15 +80,6 @@ class Capacitor(EnergyStorage):
 
     # Voltage across capacitor, Vc(t) at instant t
     def calculate_voltage(self, t_time, v_supply):
-        # TODO: Consider max supply current
-        # i_supply = v_supply / self.R_SERIES
-        # if i_supply > self.I_MAX_SUPPLY:
-        #     print(
-        #         f"Supply current exceeds maximum allowed of {self.I_MAX_SUPPLY}A!")
-        #     self.voltage = 0.0
-        #     self.status = "idle"
-        #     return self.voltage
-
         if self.status == "idle":
             self.status = "charging"
             self.t_ref = t_time
@@ -140,7 +130,6 @@ class Capacitor(EnergyStorage):
         return energy
 
     def refresh(self, t_time, v_supply, load_energy_consumed):
-        # print(f"t_time: {t_time}, v_capacitor: {self.voltage}")
         super().refresh(t_time, v_supply, load_energy_consumed)
 
     def print(self, t_index, file):

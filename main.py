@@ -5,20 +5,17 @@ import src.interface.interface as ui
 import PySimpleGUI as sg
 
 
-def run_manual():
-    # Generates a time vector with a given start, end, and interval
-    t_vector = simulator.generate_t_vector(start=0, end=360, interval=0.25)
+CONFIG_PATH = "src/input/files/config.json"
 
+
+def run_manual():
     # Initializes the simulation input configuration
-    input_config = {
-        "supply": {"type": "constant"},
-        "storage": {"type": "capacitor"},
-        "load": {"type": "resistor"},
-    }
-    sim_input = inp.Input(input_config, t_vector)
+    config = inp.load_config_file(CONFIG_PATH)
+
+    sim_input = inp.Input(config)
 
     # Run simulation for given input params
-    sim_output = simulator.run(t_vector, sim_input)
+    sim_output = simulator.run(sim_input)
 
     # Write output to local log file, 'output.log'
     out.write_to_log(sim_output)
