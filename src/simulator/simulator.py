@@ -1,9 +1,10 @@
 def run(sim_input):
     if sim_input == {}:
-        raise ValueError("simulation input cannot be empty")
+        raise ValueError("Simulation input cannot be empty!")
 
     t_vector = sim_input.t_vector
     sim_output = {}
+
     # Executes the simulation, updating the supply, storage and load at each time t
     for i, t in enumerate(t_vector):
         sim_input.supply.refresh(t_index=i)

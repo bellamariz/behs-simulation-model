@@ -18,14 +18,74 @@ LOAD_REGISTRY = {
 }
 
 
-def load_config_file(filepath: str) -> dict:
+def generate_t_vector(start, end, interval):
+    return [start + i *
+            interval for i in range(int((end - start) / interval) + 1)]
+
+
+def load_config_from_file(filepath: str) -> dict:
     with open(filepath, "r") as f:
         return json.load(f)
 
 
-def generate_t_vector(start, end, interval):
-    return [start + i *
-            interval for i in range(int((end - start) / interval) + 1)]
+def load_config_from_ui(values):
+    supply_type = values["supply_type"]
+    load_type = values["load_type"]
+
+    supply_cfg = {"type": supply_type}
+    if supply_type == "constant":
+        supply_cfg["v_base"] = float(values["supply_v_base"])
+    elif supply_type == "harvesting":
+        supply_cfg["filename"] = values["supply_filename"]
+        supply_cfg["sampling_period"] = float(values["supply_sampling_period"])
+
+    load_cfg = {"type": load_type}
+    if load_type == "resistor":
+        load_cfg["resistance"] = float(values["load_resistance"])
+        load_cfg["p_rating"] = float(values["load_p_rating"])
+    elif load_type == "mcu":
+        load_cfg["v_min"] = float(values["load_v_min"])
+        load_cfg["v_wake_up"] = float(values["load_v_wake_up"])
+        load_cfg["v_oper_low"] = float(values["load_v_oper_low"])
+        load_cfg["v_oper_active"] = float(values["load_v_oper_active"])
+        load_cfg["v_max"] = float(values["load_v_max"])
+        load_cfg["modes"] = {
+            "shutdown": float(values["mode_shutdown"]),
+            "low_power": float(values["mode_low_power"]),
+            "active": float(values["mode_active"]),
+        }
+        load_cfg["program"] = values["load_program"]
+
+    config = {
+        "simulation": {
+            "duration": float(values["sim_duration"]),
+            "step": float(values["sim_step"]),
+        },
+        "supply": supply_cfg,
+        "storage": {
+            "type": values["storage_type"],
+            "capacitance": float(values["storage_capacitance"]),
+            "v_oper_max": float(values["storage_v_oper_max"]),
+            "r_charge": float(values["storage_r_charge"]),
+        },
+        "load": load_cfg,
+    }
+
+    if load_type == "mcu":
+        config["actions"] = [
+            {"action": "sleeping", "instruction": values["action_sleep_instr"], "cost": float(
+                values["action_sleep_cost"])},
+            {"action": "sensing", "instruction": values["action_sense_instr"], "cost": float(
+                values["action_sense_cost"])},
+            {"action": "transmitting", "instruction": values["action_tx_instr"], "cost": float(
+                values["action_tx_cost"])},
+            {"action": "receiving", "instruction": values["action_rx_instr"], "cost": float(
+                values["action_rx_cost"])},
+            {"action": "processing", "instruction": values["action_proc_instr"], "cost": float(
+                values["action_proc_cost"])},
+        ]
+
+    return config
 
 
 class Input:
