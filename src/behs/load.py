@@ -139,7 +139,7 @@ class MCU(Load):
             raise ValueError(
                 f"Supply voltage {v_supply:.5f}V exceeds the MCU's max voltage {self.V_MAX:.5f}V!")
 
-        if v_supply <= self.V_MIN:
+        if v_supply < self.V_OPER_LOW:
             self.mode = "shutdown"
         elif v_supply >= self.V_OPER_LOW and v_supply < self.V_OPER_ACTIVE:
             self.mode = "low_power"
