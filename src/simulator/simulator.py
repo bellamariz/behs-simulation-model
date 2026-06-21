@@ -7,9 +7,8 @@ def run(sim_input):
     # Executes the simulation, updating the supply, storage and load at each time t
     for i, t in enumerate(t_vector):
         sim_input.supply.refresh(t_index=i)
+        sim_input.storage.refresh(t_time=t, v_supply=sim_input.supply.voltage)
         sim_input.load.refresh(v_supply=sim_input.storage.voltage)
-        sim_input.storage.refresh(t_time=t, v_supply=sim_input.supply.voltage,
-                                  load_energy_consumed=sim_input.load.energy_consumed)
 
         sim_output[t] = {
             "supply": {

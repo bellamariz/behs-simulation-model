@@ -30,12 +30,12 @@ class EnergyStorage(ABC):
     def calculate_energy_stored(self, load_energy_consumed: float) -> float:
         pass
 
-    # Refreshes the storage's state based on 'v_supply' and 'load_energy_consumed'
+    # Refreshes the storage's state based on 'v_supply'
     @abstractmethod
-    def refresh(self, t_time: float, v_supply: float, load_energy_consumed: float) -> None:
+    def refresh(self, t_time: float, v_supply: float) -> None:
         self.voltage = self.calculate_voltage(t_time, v_supply)
         self.current = self.calculate_current(t_time, v_supply)
-        self.energy_stored = self.calculate_energy_stored(load_energy_consumed)
+        self.energy_stored = self.calculate_energy_stored()
 
     # Prints the storage's state at a given time index
     @abstractmethod
@@ -90,9 +90,9 @@ class Capacitor(EnergyStorage):
         elapsed = t_time - self.t_ref
 
         if self.status == "charging":
-            if self.voltage >= self.V_LOAD_MAX or self.voltage >= self.V_MAX:
+            if (self.voltage+0.05 >= self.V_LOAD_MAX) or (self.voltage+0.05 >= self.V_MAX):
                 self.status = "ready"
-                return min(self.V_LOAD_MAX, self.V_MAX)
+                return self.voltage
             return self.charging_voltage(elapsed, v_supply)
 
         if self.status == "ready":
@@ -124,14 +124,11 @@ class Capacitor(EnergyStorage):
             return 0.0
 
     # Energy stored in capacitor, E(t), at instant t and given Vc(t)
-    def calculate_energy_stored(self, load_energy_consumed):
-        energy = (1/2) * self.CAPACITANCE * (self.voltage*self.voltage)
-        if self.status == "discharging":
-            return energy - load_energy_consumed
-        return energy
+    def calculate_energy_stored(self):
+        return (1/2) * self.CAPACITANCE * (self.voltage*self.voltage)
 
-    def refresh(self, t_time, v_supply, load_energy_consumed):
-        super().refresh(t_time, v_supply, load_energy_consumed)
+    def refresh(self, t_time, v_supply):
+        super().refresh(t_time, v_supply)
 
     def print(self, t_index, file):
         super().print(t_index, file)
