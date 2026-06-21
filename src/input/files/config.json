@@ -9,8 +9,7 @@
   },
   "storage": {
     "type": "capacitor",
-    "capacity": 0.1,
-    "i_supply_max": 0.05,
+    "capacitance": 0.1,
     "v_oper_max": 5.5,
     "r_charge": 510
   },
@@ -21,43 +20,22 @@
     "v_oper_low": 2.2,
     "v_oper_active": 3.0,
     "v_max": 3.6,
-    "modes": [
-      {
-        "name": "shutdown",
-        "cost": 0
-      },
-      {
-        "name": "low_power",
-        "cost": {
-          "1MHz": 0.000075,
-          "4MHz": 0.000105,
-          "8MHz": 0.000165,
-          "12MHz": 0.000240,
-          "16MHz": 0.000220
-        }
-      },
-      {
-        "name": "active",
-        "cost": {
-          "1MHz": 0.000225,
-          "4MHz": 0.000665,
-          "8MHz": 0.001275,
-          "12MHz": 0.001550,
-          "16MHz": 0.001970
-        }
-      }
-    ],
+    "modes": {
+      "shutdown": 0,
+      "low_power": 0.000092,
+      "active": 0.00048
+    },
     "program": "src/input/files/program01.script"
   },
   "actions": [
     {
-      "action": "sensor_disabled",
-      "instruction": "SENSING_OFF",
-      "cost": 0
+      "action": "sleeping",
+      "instruction": "SLEEP",
+      "cost": 0.00012
     },
     {
-      "action": "sensor_enabled",
-      "instruction": "SENSING_ON",
+      "action": "sensing",
+      "instruction": "SENSE",
       "cost": 0.006
     },
     {
@@ -69,6 +47,11 @@
       "action": "receiving",
       "instruction": "RX_ON",
       "cost": 0.027
+    },
+    {
+      "action": "processing",
+      "instruction": "CPU_PROC",
+      "cost": 0
     }
   ]
 }
