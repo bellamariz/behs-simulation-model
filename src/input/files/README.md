@@ -37,7 +37,7 @@ The configuration parameters are:
 | Parameter | Type | Description |
 |---|---|---|
 | **type** | `string` | Type of supply, value is `"constant"`. |
-| **v_base** | `float` | Base value for constant voltage supply. |
+| **p_base** | `float` | Base power value for constant supply (in Watts). |
 
 For example:
 
@@ -45,12 +45,12 @@ For example:
 {
   "supply":{
     "type": "constant",
-    "v_base": 8.0
+    "p_base": 0.05
   }
 }
 ```
 
-This will generate a **profile** attribute for the `ConstantSupply` class, which is a vector of size `duration / step`, where each simulation step will assume a energy supply value of **v_base**.
+This will generate a **profile** attribute for the `ConstantSupply` class, which is a vector of size **duration** / **step**. Each simulation step will estimate an energy supply value of **profile[t]** / **step**.
 
 #### 2.1.2 Harvesting (Generic)
 
@@ -80,7 +80,7 @@ The user MUST include a text file containing the energy profile measurements gat
 
 Public datasets of real Energy Harvesting measurements are readily available online, for example, [Long-Term Tracing of Indoor Solar Harvesting](https://zenodo.org/records/3363925).
 
-The normalized data will be loaded into the **profile** attribute of the `HarvestingSupply` class, which is a vector of size `duration / step`. Each simulation step will assume an energy supply value normalized from **filename**.
+The normalized data will be loaded into the **profile** attribute of the `HarvestingSupply` class, which is a vector of size **duration** / **step**. Each simulation step will estimate an energy supply value of **profile[t]** / **step**.
 
 
 ### 2.2. Energy Storage
@@ -98,7 +98,6 @@ The configuration parameters are as follows.
 | **type** | `string` | Type of storage, value is `"capacitor"`. |
 | **capacitance** | `float` | Capacitance value of capacitor (in F). |
 | **v_oper_max** | `float` | Maximum operating voltage (in Volts). |
-| **r_charge** | `float` | User-defined series resistance (in Ohms). | 
 
 These values can be easily acquired from the capacitor datasheet. For example, for the [FTW0H104ZF](https://www.digikey.com.br/en/products/detail/kemet/FTW0H104ZF/4290862) capacitor and a series resistance of 510 Ohm, we have:
 
@@ -108,7 +107,6 @@ These values can be easily acquired from the capacitor datasheet. For example, f
     "type": "capacitor",
     "capacitance": 0.1,
     "v_oper_max": 5.5,
-    "r_charge": 510
   }
 }
 ```
@@ -128,6 +126,7 @@ The configuration parameters are:
 | **type** | `string` | Type of load, value is `"resistor"`. |
 | **resistance** | `float` | Resistance value (in Ohms). |
 | **p_rating** | `float` | Resistor power rating (in Watts). |
+| **v_max** | `float` | Maximum working voltage (in Voltz). |
 
 For example, if considering an actual resistor [CF14JT1K60 1.6kOhms](https://www.digikey.com.br/en/products/detail/stackpole-electronics-inc/CF14JT1K60/1741251), we have the following:
 
@@ -137,11 +136,12 @@ For example, if considering an actual resistor [CF14JT1K60 1.6kOhms](https://www
     "type": "resistor",
     "resistance": 1600,
     "p_rating": 0.25,
+    "v_max": 250,
   }
 }
 ```
 
-It represents a load that consumes a constant amount of energy over time.
+It represents a load that consumes a constant amount of energy over each simulation **step**: `E(t) = (V^2/R)/step`.
 
 #### 2.3.2. MCU (Generic)
 
@@ -253,13 +253,12 @@ Over a simulation period of 35 steps (or 8.75s), the total energy consumed was 0
   },
   "supply":{
     "type": "constant",
-    "v_base": 8.0
+    "p_base": 0.05
   },
   "storage": {
     "type": "capacitor",
     "capacitance": 0.1,
     "v_oper_max": 5.5,
-    "r_charge": 510
   },
   "load": {
     "type": "mcu",

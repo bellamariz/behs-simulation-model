@@ -5,13 +5,12 @@
   },
   "supply":{
     "type": "constant",
-    "v_base": 8.0
+    "p_base": 0.05
   },
   "storage": {
     "type": "capacitor",
     "capacitance": 0.1,
-    "v_oper_max": 5.5,
-    "r_charge": 510
+    "v_oper_max": 5.5
   },
   "load": {
     "type": "mcu",

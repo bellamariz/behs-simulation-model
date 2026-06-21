@@ -29,20 +29,30 @@ def load_config_from_file(filepath: str) -> dict:
 
 
 def load_config_from_ui(values):
-    supply_type = values["supply_type"]
-    load_type = values["load_type"]
+    # Parses input for Energy Storage
+    storage_type = values["storage_type"]
+    storage_cfg = {"type": storage_type}
+    if storage_type == "capacitor":
+        storage_cfg["capacitance"] = float(values["storage_capacitance"])
+        storage_cfg["v_oper_max"] = float(values["storage_v_oper_max"])
 
+    # Parses input for Energy Supply
+    supply_type = values["supply_type"]
     supply_cfg = {"type": supply_type}
     if supply_type == "constant":
-        supply_cfg["v_base"] = float(values["supply_v_base"])
+        supply_cfg["p_base"] = float(values["supply_p_base"])
     elif supply_type == "harvesting":
         supply_cfg["filename"] = values["supply_filename"]
         supply_cfg["sampling_period"] = float(values["supply_sampling_period"])
 
+    # Parses input for Load
+    load_type = values["load_type"]
     load_cfg = {"type": load_type}
+    actions_cfg = []
     if load_type == "resistor":
         load_cfg["resistance"] = float(values["load_resistance"])
         load_cfg["p_rating"] = float(values["load_p_rating"])
+        load_cfg["v_max"] = float(values["load_v_max"])
     elif load_type == "mcu":
         load_cfg["v_min"] = float(values["load_v_min"])
         load_cfg["v_wake_up"] = float(values["load_v_wake_up"])
@@ -56,24 +66,8 @@ def load_config_from_ui(values):
         }
         load_cfg["program"] = values["load_program"]
 
-    config = {
-        "simulation": {
-            "duration": float(values["sim_duration"]),
-            "step": float(values["sim_step"]),
-        },
-        "supply": supply_cfg,
-        "storage": {
-            "type": values["storage_type"],
-            "capacitance": float(values["storage_capacitance"]),
-            "v_oper_max": float(values["storage_v_oper_max"]),
-            "r_charge": float(values["storage_r_charge"]),
-        },
-        "load": load_cfg,
-        "actions": []
-    }
-
-    if load_type == "mcu":
-        config["actions"] = [
+        # Parses input for Actions (if Load is MCU)
+        actions_cfg = [
             {"action": "sleeping", "instruction": values["action_sleep_instr"], "cost": float(
                 values["action_sleep_cost"])},
             {"action": "sensing", "instruction": values["action_sense_instr"], "cost": float(
@@ -85,6 +79,17 @@ def load_config_from_ui(values):
             {"action": "processing", "instruction": values["action_proc_instr"], "cost": float(
                 values["action_proc_cost"])},
         ]
+
+    config = {
+        "simulation": {
+            "duration": float(values["sim_duration"]),
+            "step": float(values["sim_step"]),
+        },
+        "supply": supply_cfg,
+        "storage": storage_cfg,
+        "load": load_cfg,
+        "actions": actions_cfg
+    }
 
     return config
 
@@ -100,6 +105,7 @@ class Input:
                 "Simulation 'step' and 'duration' must be specified in the config.")
 
         # Generate time vector for the simulation
+        self.t_step = t_step
         self.t_vector = generate_t_vector(
             start=0, end=t_duration, interval=t_step)
 
@@ -120,9 +126,8 @@ class Input:
             raise ValueError(f"Unsupported load type: {load_type!r}")
 
         self.supply = SUPPLY_REGISTRY[supply_type](supply_cfg, self.t_vector)
-        self.load = LOAD_REGISTRY[load_type](load_cfg, t_step)
-        self.storage = STORAGE_REGISTRY[storage_type](
-            storage_cfg, self.load.v_on, self.load.V_MAX)
+        self.storage = STORAGE_REGISTRY[storage_type](storage_cfg)
+        self.load = LOAD_REGISTRY[load_type](load_cfg)
 
         if self.load.type == "mcu":
             self.actions = config.get("actions")

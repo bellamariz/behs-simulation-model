@@ -132,8 +132,8 @@ class SimulationForm:
 
         const_frame = ttk.Frame(lf)
         const_frame.pack(fill="x")
-        self._add_field(const_frame, "Base Voltage (V):",
-                        "supply_v_base", "8.0")
+        self._add_field(const_frame, "Base Power Output (W):",
+                        "supply_p_base", "0.05")
         self._dynamic_frames["supply_constant"] = const_frame
 
         harv_frame = ttk.Frame(lf)
@@ -156,8 +156,6 @@ class SimulationForm:
         self._add_field(lf, "Capacitance (F):", "storage_capacitance", "0.1")
         self._add_field(lf, "Max Operating Voltage (V):",
                         "storage_v_oper_max", "5.5")
-        self._add_field(lf, "Series Resistance (Ohms):",
-                        "storage_r_charge", "510")
 
     def _build_load_frame(self, parent):
         lf = ttk.LabelFrame(parent, text="Load", padding=6)
@@ -171,6 +169,8 @@ class SimulationForm:
                         "load_resistance", "1600")
         self._add_field(resistor_frame, "Power Rating (W):",
                         "load_p_rating", "0.25")
+        self._add_field(resistor_frame, "Max Voltage (V):",
+                        "load_v_max", "5.5")
         self._dynamic_frames["load_resistor"] = resistor_frame
         resistor_frame.pack_forget()
 
@@ -183,7 +183,8 @@ class SimulationForm:
                         "load_v_oper_low", "2.2")
         self._add_field(mcu_frame, "Active Op. Voltage (V):",
                         "load_v_oper_active", "3.0")
-        self._add_field(mcu_frame, "Max Voltage (V):", "load_v_max", "3.6")
+        self._add_field(mcu_frame, "Max Voltage (V):",
+                        "load_v_max", "3.6")
 
         modes_frame = ttk.Frame(mcu_frame)
         modes_frame.pack(fill="x", pady=(6, 2))
