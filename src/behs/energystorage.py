@@ -3,41 +3,48 @@ from abc import ABC, abstractmethod
 
 
 # Class EnergyStorage for the BEHS simulation model
-# It represents the energy storage, a circuit component that stores energy for later use
+# It represents the energy storage, a circuit component that stores energy for later use.
 class EnergyStorage(ABC):
     @abstractmethod
     def __init__(self):
         self.type: str
         self.status: str
-        self.voltage: float  # voltage across the energy storage, in Voltz
-        self.current: float  # current flowing through the energy storage, in Amperes
-        self.energy_stored: float  # energy stored by the buffer, in Joules
+        self.voltage: float        # voltage (V) across the storage at time t
+        self.current: float        # current (A) through the storage at time t
+        self.energy_stored: float  # energy stored (J) in the buffer at time t
+        self.power_output: float   # power output (W) at time t
 
-    # Calculates the voltage across the storage based on 'v_supply'
-    # Param 'v_supply' is provided by the energy supply (e.g. constant, harvester, etc)
-
+    # Calculates the voltage across the storage, derived from the energy stored
     @abstractmethod
-    def calculate_voltage(self, t_time: int, v_supply: float) -> float:
+    def calculate_voltage(self) -> float:
         pass
 
-    # Calculates the current flowing through the storage based on 'v_supply'
+    # Calculates the current flowing through the storage, derived from power and voltage
     @abstractmethod
-    def calculate_current(self, t_time: int, v_supply: float) -> float:
+    def calculate_current(self) -> float:
         pass
 
-    # Calculates the energy stored, discounted by the energy consumed by the load
+    # Calculates the energy stored
     @abstractmethod
-    def calculate_energy_stored(self, load_energy_consumed: float) -> float:
+    def calculate_energy_stored(self) -> float:
         pass
 
-    # Refreshes the storage's state based on 'v_supply'
+    # Calculates the power output
     @abstractmethod
-    def refresh(self, t_time: float, v_supply: float) -> None:
-        self.voltage = self.calculate_voltage(t_time, v_supply)
-        self.current = self.calculate_current(t_time, v_supply)
-        self.energy_stored = self.calculate_energy_stored()
+    def calculate_power_output(self) -> float:
+        pass
 
-    # Prints the storage's state at a given time index
+    # Refreshes the energy storage's state at each time step
+    # Depends on the energy supply and energy consumed by the load
+    @abstractmethod
+    def refresh(self, e_supply: float, e_load: float, t_step: float) -> None:
+        self.energy_stored = self.calculate_energy_stored(
+            e_supply, e_load)
+        self.voltage = self.calculate_voltage()
+        self.power_output = self.calculate_power_output(t_step)
+        self.current = self.calculate_current()
+
+    # Prints the energy storage's state at a given time index
     @abstractmethod
     def print(self, t_index: int, file) -> None:
         print(
@@ -46,89 +53,58 @@ class EnergyStorage(ABC):
             f"status={self.status},"
             f"voltage={self.voltage:.5f}V,"
             f"current={self.current:.5f}A,"
-            f"energy_stored={self.energy_stored:.5f}J",
+            f"energy_stored={self.energy_stored:.5f}J,"
+            f"power_output={self.power_output:.5f}W",
             file=file
         )
 
 
 # Class Capacitor for the BEHS simulation model, inheriting from EnergyStorage Class
-# It represents a capacitor, with its equations considering a RC circuit model
+# It represents a capacitor, estimating its energy from load consumption and energy supply.
+#   E(t) = E(t-1) + Esupply(t) - Eload(t)
+#   V(t) = sqrt(2 * E(t) / C)
 class Capacitor(EnergyStorage):
-    def __init__(self, config, v_load_min, v_load_max):
+    def __init__(self, config):
         self.CAPACITANCE = config.get("capacitance")
-        self.R_SERIES = config.get("r_charge")
         self.V_MAX = config.get("v_oper_max")
-        self.V_LOAD_MIN = v_load_min
-        self.V_LOAD_MAX = v_load_max
-        self.TIME_CONSTANT = self.CAPACITANCE * self.R_SERIES
+        self.E_MAX = 0.5 * self.CAPACITANCE * self.V_MAX ** 2
 
         self.type = config.get("type")
-        self.status = "idle"  # "charging", "ready", "discharging" or "idle"
+        self.status = "idle"
         self.voltage = 0.0
         self.current = 0.0
         self.energy_stored = 0.0
-        self.t_ref = 0
-        self.v_discharge_init = 0.0
-        self.v_charge_init = 0.0
+        self.power_output = 0.0
 
-    # Voltage across capacitor when charging, Vc(t), at instant t and given Vin (supply voltage)
-    def charging_voltage(self, t_time, v_supply):
-        return v_supply + (self.v_charge_init - v_supply) * math.exp(-t_time/self.TIME_CONSTANT)
+    # Voltage is estimated from energy stored: V(t) = sqrt(2 * E(t) / C)
+    def calculate_voltage(self):
+        return math.sqrt(2 * self.energy_stored / self.CAPACITANCE) if self.energy_stored > 0 else 0.0
 
-    # Voltage across capacitor when discharging, Vc(t), at instant t
-    def discharging_voltage(self, t_time):
-        return self.v_discharge_init * math.exp(-t_time/self.TIME_CONSTANT)
+    # Current is estimated from power and voltage: I(t) = P(t) / V(t)
+    def calculate_current(self):
+        return (self.power_output / self.voltage) if self.voltage > 0 else 0.0
 
-    # Voltage across capacitor, Vc(t) at instant t
-    def calculate_voltage(self, t_time, v_supply):
-        if self.status == "idle":
+    # Energy stored in capacitor: E(t) = E(t-1) + Esupply(t) - Eload(t)
+    def calculate_energy_stored(self, e_supply, e_load):
+        energy = self.energy_stored + e_supply - e_load
+        return min(energy, self.E_MAX) if energy > 0 else 0.0
+
+    # Power output is estimated: P(t) = E(t) / t_step
+    def calculate_power_output(self, t_step):
+        return self.energy_stored / t_step if self.energy_stored > 0 else 0.0
+
+    def refresh(self, e_supply: float, e_load: float, t_step: float) -> None:
+        super().refresh(e_supply, e_load, t_step)
+
+        delta_energy = e_supply - e_load
+        if self.energy_stored >= self.E_MAX:
+            self.status = "full"
+        elif self.energy_stored <= 0:
+            self.status = "empty"
+        elif delta_energy > 0:
             self.status = "charging"
-            self.t_ref = t_time
-            self.v_charge_init = self.voltage
-            return self.voltage
-
-        elapsed = t_time - self.t_ref
-
-        if self.status == "charging":
-            if (self.voltage+0.05 >= self.V_LOAD_MAX) or (self.voltage+0.05 >= self.V_MAX):
-                self.status = "ready"
-                return self.voltage
-            return self.charging_voltage(elapsed, v_supply)
-
-        if self.status == "ready":
-            self.t_ref = t_time
-            self.v_discharge_init = self.voltage
+        elif delta_energy < 0:
             self.status = "discharging"
-            return self.voltage
-
-        if self.status == "discharging":
-            if self.voltage <= self.V_LOAD_MIN:
-                self.status = "idle"
-                return self.voltage
-            return self.discharging_voltage(elapsed)
-
-    # Current flowing through the capacitor; V is Vin (charging) or Vci (discharging)
-    def calculate_current(self, t_time, v_supply):
-        if self.status == "idle":
-            return 0.0
-
-        elapsed = t_time - self.t_ref
-
-        if self.status == "charging":
-            return ((v_supply - self.v_charge_init) / self.R_SERIES) * math.exp(-elapsed/self.TIME_CONSTANT)
-
-        if self.status == "discharging":
-            return (self.v_discharge_init / self.R_SERIES) * math.exp(-elapsed/self.TIME_CONSTANT)
-
-        if self.status == "ready":
-            return 0.0
-
-    # Energy stored in capacitor, E(t), at instant t and given Vc(t)
-    def calculate_energy_stored(self):
-        return (1/2) * self.CAPACITANCE * (self.voltage*self.voltage)
-
-    def refresh(self, t_time, v_supply):
-        super().refresh(t_time, v_supply)
 
     def print(self, t_index, file):
         super().print(t_index, file)

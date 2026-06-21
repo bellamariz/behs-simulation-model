@@ -14,70 +14,73 @@ import random
 #
 # For now, this model will assume a more simplified behavior, with two types of energy supply:
 #
-# 1- Constant Supply: A constant voltage supply, e.g., a battery.
-# 2- Harvesting Supply: A variable voltage supply, e.g., a solar panel.
+# 1- Constant Supply: A constant power supply (e.g., a battery or regulated source).
+# 2- Harvesting Supply: A variable power supply loaded from a real energy harvesting dataset.
 
 from abc import ABC, abstractmethod
 
 
 # Class EnergySupply for the BEHS simulation model
-# It represents the energy supply, a circuit component that provides energy to the system
+# It represents the energy supply, a component that provides energy to the system.
 class EnergySupply(ABC):
     @abstractmethod
     def __init__(self):
         self.type: str
-        self.voltage: float  # supplied voltage at a given time index, in Voltz
-        self.profile: list[float]
+        self.power_output: float    # power output (W) at time t
+        self.energy_supply: float  # energy supply (J) at time t
+        self.profile: list[float]   # power profile over time (W)
 
-    # Shows the voltage being supplied at a given time index
+    # Refreshes the energy supply's state at each time step
     @abstractmethod
-    def refresh(self, t_index: int) -> None:
-        self.voltage = self.profile[t_index]
+    def refresh(self, t_index: int, t_step: float) -> None:
+        self.power_output = self.profile[t_index]
+        self.energy_supply = self.power_output * t_step
 
-    # Prints the energy supply's state at a given time index
+    # Prints the energy supply's state at given time index
     @abstractmethod
     def print(self, t_index: int, file) -> None:
         print(
             f"Energy Supply: {self.type} --> "
             f"t={t_index},"
-            f"voltage={self.voltage:.5f}V",
+            f"power_output={self.power_output:.5f}W,"
+            f"energy_supply={self.energy_supply:.5f}J",
             file=file
         )
 
 
 # Class ConstantSupply for the BEHS simulation model, inheriting from EnergySupply Class
-# It represents a constant voltage supply
+# It represents a constant power supply.
 class ConstantSupply(EnergySupply):
     def __init__(self, config, t_vector):
-        v_base = config.get("v_base")
+        p_base = config.get("p_base")
 
         self.type = config.get("type")
-        self.voltage = 0.0
-        self.profile = [v_base] * len(t_vector)
+        self.power_output = 0.0
+        self.energy_supply = 0.0
+        self.profile = [p_base] * len(t_vector)
 
-    def refresh(self, t_index):
-        super().refresh(t_index)
+    def refresh(self, t_index, t_step):
+        super().refresh(t_index, t_step)
 
     def print(self, t_index, file):
         super().print(t_index, file)
 
 
 # Class HarvestingSupply for the BEHS simulation model, inheriting from EnergySupply Class
-# It represents a variable voltage supply loaded from a real energy harvesting dataset
+# It represents a variable power supply loaded from a real energy harvesting dataset.
 class HarvestingSupply(EnergySupply):
     def __init__(self, config, t_vector):
-        profile = []
         sampling_period = config.get("sampling_period")
         filename = config.get("filename")
         if filename:
             profile = self._load_and_resample(
                 filename, sampling_period, t_vector)
         else:
-            profile = [random.uniform(0.0, 10.0)
-                       for _ in range(len(t_vector))]
+            profile = [random.uniform(0.0, 1.0) for _ in range(len(t_vector))]
 
         self.type = config.get("type")
-        self.voltage = 0.0
+        self.power_output = 0.0
+        self.energy_supply = 0.0
         self.profile = profile
 
     def _load_and_resample(self, filename, sampling_period, t_vector):
@@ -95,8 +98,8 @@ class HarvestingSupply(EnergySupply):
             result.append(raw[lo] + frac * (raw[hi] - raw[lo]))
         return result
 
-    def refresh(self, t_index):
-        super().refresh(t_index)
+    def refresh(self, t_index, t_step):
+        super().refresh(t_index, t_step)
 
     def print(self, t_index, file):
         super().print(t_index, file)
