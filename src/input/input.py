@@ -50,9 +50,9 @@ def load_config_from_ui(values):
         load_cfg["v_oper_active"] = float(values["load_v_oper_active"])
         load_cfg["v_max"] = float(values["load_v_max"])
         load_cfg["modes"] = {
-            "shutdown": float(values["mode_shutdown"]),
-            "low_power": float(values["mode_low_power"]),
-            "active": float(values["mode_active"]),
+            "shutdown": float(values["load_mode_shutdown"]),
+            "low_power": float(values["load_mode_low_power"]),
+            "active": float(values["load_mode_active"]),
         }
         load_cfg["program"] = values["load_program"]
 
@@ -69,6 +69,7 @@ def load_config_from_ui(values):
             "r_charge": float(values["storage_r_charge"]),
         },
         "load": load_cfg,
+        "actions": []
     }
 
     if load_type == "mcu":
@@ -122,3 +123,6 @@ class Input:
         self.load = LOAD_REGISTRY[load_type](load_cfg, t_step)
         self.storage = STORAGE_REGISTRY[storage_type](
             storage_cfg, self.load.v_on, self.load.V_MAX)
+
+        if self.load.type == "mcu":
+            self.actions = config.get("actions")

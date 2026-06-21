@@ -2,7 +2,7 @@ import src.simulator.simulator as simulator
 import src.output.output as out
 import src.input.input as inp
 import src.interface.interface as ui
-import PySimpleGUI as sg
+from tkinter import messagebox
 
 
 CONFIG_PATH = "src/input/files/config.json"
@@ -31,45 +31,36 @@ def run_manual():
 
 
 def run_ui():
-    window = ui.build_input_form()
+    form = ui.build_input_form()
+    values = form.run()
 
-    while True:
-        event, values = window.read()
+    if values is None:
+        return
 
-        if event == sg.WINDOW_CLOSED or event == 'Cancel':
-            break
+    try:
+        config = inp.load_config_from_ui(values)
 
-        # Observe UI events for supply/load type changes
-        ui.handle_ui_events(window, event, values)
+        # Initializes the simulation input configuration
+        sim_input = inp.Input(config)
 
-        if event == 'Run Simulation':
-            try:
-                config = inp.load_config_from_ui(values)
+        # Run simulation for given input params
+        sim_output = simulator.run(sim_input)
+        messagebox.showinfo("Success", "Simulation run successfully!")
 
-                # Initializes the simulation input configuration
-                sim_input = inp.Input(config)
+        # Write output to local log file, 'output.log'
+        out.write_to_log(sim_output)
 
-                # Run simulation for given input params
-                sim_output = simulator.run(sim_input)
-                sg.popup_ok('Simulation run successfully!')
+        # Write output to local CSV file, 'output.csv'
+        # out.write_to_csv(sim_output)
 
-                # Write output to local log file, 'output.log'
-                out.write_to_log(sim_output)
+        # Formats CSV and writes output to local Excel file, 'output.xlsx'
+        # out.write_to_excel()
 
-                # Write output to local CSV file, 'output.csv'
-                # out.write_to_csv(sim_output)
+        # Reads Excel file and plots the output
+        # out.plot()
 
-                # Formats CSV and writes output to local Excel file, 'output.xlsx'
-                # out.write_to_excel()
-
-                # Reads Excel file and plots the output
-                # out.plot()
-
-                break
-            except Exception as e:
-                sg.popup_error(f'Error: {str(e)}')
-
-    window.close()
+    except Exception as e:
+        messagebox.showerror("Error", f"Error: {str(e)}")
 
 
 def main():
