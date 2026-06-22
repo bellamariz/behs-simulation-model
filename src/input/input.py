@@ -2,6 +2,7 @@ import json
 import src.behs.energysupply as supply
 import src.behs.energystorage as storage
 import src.behs.load as load
+import src.program.program as program
 
 SUPPLY_REGISTRY = {
     "constant": supply.ConstantSupply,
@@ -18,16 +19,21 @@ LOAD_REGISTRY = {
 }
 
 
+# Generate time vector for simulation
 def generate_t_vector(start, end, interval):
     return [start + i *
             interval for i in range(int((end - start) / interval) + 1)]
 
 
+# Load simulation configuration from JSON input file
+# For more information, read the docs: /src/input/files/README.md
 def load_config_from_file(filepath: str) -> dict:
     with open(filepath, "r") as f:
         return json.load(f)
 
 
+# Load simulation configuration from UI input values
+# TODO: Update func considering the new config.json
 def load_config_from_ui(values):
     # Parses input for Energy Storage
     storage_type = values["storage_type"]
@@ -104,12 +110,11 @@ class Input:
             raise ValueError(
                 "Simulation 'step' and 'duration' must be specified in the config.")
 
-        # Generate time vector for the simulation
         self.t_step = t_step
         self.t_vector = generate_t_vector(
             start=0, end=t_duration, interval=t_step)
 
-        # Load BEHS parameters
+        # Load Energy Harvesting parameters
         supply_cfg = config.get("supply")
         storage_cfg = config.get("storage")
         load_cfg = config.get("load")
@@ -129,5 +134,10 @@ class Input:
         self.storage = STORAGE_REGISTRY[storage_type](storage_cfg)
         self.load = LOAD_REGISTRY[load_type](load_cfg)
 
-        if self.load.type == "mcu":
-            self.actions = config.get("actions")
+        # Load software operations when MCU Load is selected
+        if load_type == "mcu":
+            program_file = config.get("program_file")
+            mcu_active_cost = load_cfg.get("modes").get("active").get("cost")
+            mcu_standby_cost = load_cfg.get("modes").get("standby").get("cost")
+            self.program = program.Program(
+                program_file, mcu_active_cost, mcu_standby_cost)
