@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
 import math
 
+
 # Class Load for the BEHS simulation model
 # It represents the load, a circuit component that consumes energy from the energy storage
-
-
 class Load(ABC):
     @abstractmethod
     def __init__(self):
@@ -98,43 +97,51 @@ class Resistor(Load):
 # It represents a microcontroller unit (MCU), consuming energy based on its specs
 class MCU(Load):
     def __init__(self, config):
+        modes = config.get("modes")
+        active_mode = modes.get("active")
+        standby_mode = modes.get("standby")
+
         self.V_MIN = config.get("v_min")
         self.V_WAKE_UP = config.get("v_wake_up")
-        self.V_OPER_LOW = config.get("v_oper_low")
-        self.V_OPER_ACTIVE = config.get("v_oper_active")
+        self.V_OPER_STANDBY = standby_mode.get("v_oper")
+        self.V_OPER_ACTIVE = active_mode.get("v_oper")
         self.V_MAX = config.get("v_max")
-        self.MODES = config.get("modes")
-        self.PROGRAM_FILE = config.get("program")
+        self.ACTIVE_MODE = active_mode
+        self.STANDBY_MODE = standby_mode
 
         self.type = config.get("type")
         self.v_on = self.V_WAKE_UP
-        self.mode = "shutdown"  # "shutdown", "low_power", "active"
+        self.mode = "shutdown"  # "shutdown", "standby", "active"
         self.voltage = 0.0
         self.current = 0.0
         self.energy_consumed = 0.0
         self.total_energy_consumed = 0.0
 
+    # TODO: Recalculate current (and energy) to include the cost from Program
     def calculate_current(self, v_supply):
         if self.mode == "active":
-            return self.MODES.get("active")
-        elif self.mode == "low_power":
-            return self.MODES.get("low_power")
+            return self.ACTIVE_MODE.get("cost")
+        elif self.mode == "standby":
+            return self.STANDBY_MODE.get("cost")
         else:
-            return self.MODES.get("shutdown", 0.0)
+            return 0.0
 
     def calculate_voltage(self, v_supply):
         return v_supply if v_supply >= self.V_MIN else 0.0
 
     def calculate_energy_consumed(self, v_supply, t_step):
-        return self.calculate_voltage(v_supply) * self.calculate_current(v_supply) * t_step
+        return self.voltage * self.current * t_step
 
+    # TODO: Update mode transitions to also include Program instructions
     def refresh(self, v_supply, t_step):
         super().refresh(v_supply, t_step)
 
-        if v_supply < self.V_OPER_LOW:
+        if v_supply < self.V_MIN:
             self.mode = "shutdown"
-        elif v_supply >= self.V_OPER_LOW and v_supply < self.V_OPER_ACTIVE:
-            self.mode = "low_power"
+        elif v_supply >= self.V_WAKE_UP and v_supply < self.V_OPER_STANDBY:
+            self.mode = "idle"
+        elif v_supply >= self.V_OPER_STANDBY and v_supply < self.V_OPER_ACTIVE:
+            self.mode = "standby"
         elif v_supply >= self.V_OPER_ACTIVE:
             self.mode = "active"
 

@@ -65,10 +65,10 @@ def run_ui():
 
 def main():
     # Uncomment the line below to run the simulation with a manual configuration
-    # run_manual()
+    run_manual()
 
     # Uncomment the line below to run the simulation with a UI for input configuration
-    run_ui()
+    # run_ui()
 
 
 if __name__ == "__main__":
