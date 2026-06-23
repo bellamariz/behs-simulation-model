@@ -26,7 +26,7 @@ class Load(ABC):
 
     # Calculates the current flowing through the load based on 'v_supply'
     @abstractmethod
-    def calculate_current(self, v_supply: float) -> float:
+    def calculate_current(self, v_supply: float, t_step: float) -> float:
         pass
 
     # Calculates the energy consumed by the load based on 'v_supply'
@@ -43,7 +43,7 @@ class Load(ABC):
     @abstractmethod
     def refresh(self, v_supply: float, t_step: float) -> None:
         self.voltage = self.calculate_voltage(v_supply)
-        self.current = self.calculate_current(v_supply)
+        self.current = self.calculate_current(v_supply, t_step)
         self.energy_consumed = self.calculate_energy_consumed(v_supply, t_step)
         self.total_energy_consumed += self.energy_consumed
 
@@ -82,21 +82,22 @@ class Resistor(Load):
         self.total_energy_consumed = 0.0
         self.program = None
 
-    def calculate_current(self, v_supply):
-        if v_supply >= self.v_on:
-            return v_supply / self.RESISTANCE
-        return 0.0
-
     # If supply voltage exceeds V_MAX, we assume the Load stays at V_MAX
-    # We assume there is a voltage regulator between the Supply and Load
+    # We assume there is a voltage regulator between the EnergyStorage and Load
     def calculate_voltage(self, v_supply):
-        if v_supply < self.V_MAX:
-            return v_supply
-        return self.V_MAX
+        if v_supply < self.v_on:
+            return 0.0
+        return min(v_supply, self.V_MAX)
+
+    def calculate_current(self, v_supply, t_step):
+        if v_supply >= self.v_on:
+            return min(v_supply, self.V_MAX) / self.RESISTANCE
+        return 0.0
 
     def calculate_energy_consumed(self, v_supply, t_step):
         if v_supply >= self.v_on:
-            return (v_supply ** 2 / self.RESISTANCE) * t_step
+            v = min(v_supply, self.V_MAX)
+            return (v ** 2 / self.RESISTANCE) * t_step
         return 0.0
 
     def upload_software(self, program):
@@ -135,31 +136,28 @@ class MCU(Load):
         self.total_energy_consumed = 0.0
         self.program = None
 
-    def calculate_current(self, v_supply):
+    # If supply voltage exceeds V_MAX, we assume the Load stays at V_MAX
+    # We assume there is a voltage regulator between the EnergyStorage and Load
+    def calculate_voltage(self, v_supply):
+        if v_supply < self.V_MIN:
+            return 0.0
+        return min(v_supply, self.V_MAX)
+
+    def calculate_current(self, v_supply, t_step):
         # We only execute the program if the MCU is in active mode
         if self.mode == "active":
-            cpu_cost = self.ACTIVE_MODE.get("cost")
+            active_cost = self.ACTIVE_MODE.get("cost")
             if self.program is not None:
                 op = self.program.get_executing_operation()
                 if op is not None:
-                    if op.instruction in ("ACTIVE", "STANDBY"):
-                        return op.cost
-                    elif op.instruction not in ("LOOP", "END"):
-                        return cpu_cost + op.cost
-            return cpu_cost
+                    return active_cost + op.get_cost_for_t_step(t_step)
+            return active_cost
         elif self.mode == "standby":
             return self.STANDBY_MODE.get("cost")
         elif self.mode == "shutdown":
             return self.SHUTDOWN_MODE.get("cost")
         else:
             return 0.0
-
-    # If supply voltage exceeds V_MAX, we assume the Load stays at V_MAX
-    # We assume there is a voltage regulator between the Supply and Load
-    def calculate_voltage(self, v_supply):
-        if v_supply < self.V_MAX:
-            return v_supply
-        return self.V_MAX
 
     def calculate_energy_consumed(self, v_supply, t_step):
         return self.voltage * self.current * t_step
