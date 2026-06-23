@@ -87,10 +87,12 @@ class Resistor(Load):
             return v_supply / self.RESISTANCE
         return 0.0
 
+    # If supply voltage exceeds V_MAX, we assume the Load stays at V_MAX
+    # We assume there is a voltage regulator between the Supply and Load
     def calculate_voltage(self, v_supply):
-        if v_supply >= self.v_on:
+        if v_supply < self.V_MAX:
             return v_supply
-        return 0.0
+        return self.V_MAX
 
     def calculate_energy_consumed(self, v_supply, t_step):
         if v_supply >= self.v_on:
@@ -152,10 +154,12 @@ class MCU(Load):
         else:
             return 0.0
 
+    # If supply voltage exceeds V_MAX, we assume the Load stays at V_MAX
+    # We assume there is a voltage regulator between the Supply and Load
     def calculate_voltage(self, v_supply):
-        if v_supply >= self.v_on:
+        if v_supply < self.V_MAX:
             return v_supply
-        return 0.0
+        return self.V_MAX
 
     def calculate_energy_consumed(self, v_supply, t_step):
         return self.voltage * self.current * t_step
