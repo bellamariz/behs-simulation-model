@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 import math
 
+from src.program.program import Program
+
 
 # Class Load for the BEHS simulation model
 # It represents the load, a circuit component that consumes energy from the energy storage
@@ -13,6 +15,7 @@ class Load(ABC):
         self.current: float  # current (A) flowing through the load
         self.energy_consumed: float  # energy consumed (J) by the load
         self.total_energy_consumed: float  # cumulative energy consumed (J)
+        self.program: Program  # software executed by load (if applicable)
 
     # Param 'v_supply' is the current voltage supplied by the energy storage
 
@@ -30,6 +33,11 @@ class Load(ABC):
     @abstractmethod
     def calculate_energy_consumed(self, v_supply: float, t_step: float) -> float:
         pass
+
+    # Load Program from the configuration
+    @abstractmethod
+    def upload_software(self, program: Program) -> None:
+        self.program = program
 
     # Refreshes the load's state based on 'v_supply' at each time step
     @abstractmethod
@@ -58,18 +66,21 @@ class Load(ABC):
 # It represents a resistor, consuming energy based on its resistance
 class Resistor(Load):
     def __init__(self, config):
+        # Class specific attributes
         self.RESISTANCE = config.get("resistance")
         self.P_RATING = config.get("p_rating")
         self.V_OPER = 1.8
         self.V_MAX = min(
             math.sqrt(self.P_RATING * self.RESISTANCE), config.get("v_max"))
 
+        # Inherited attributes
         self.type = config.get("type")
         self.v_on = min(self.V_OPER, self.V_MAX)
         self.voltage = 0.0
         self.current = 0.0
         self.energy_consumed = 0.0
         self.total_energy_consumed = 0.0
+        self.program = None
 
     def calculate_current(self, v_supply):
         if v_supply >= self.v_on:
@@ -86,6 +97,9 @@ class Resistor(Load):
             return (v_supply ** 2 / self.RESISTANCE) * t_step
         return 0.0
 
+    def upload_software(self, program):
+        super().upload_software(program)
+
     def refresh(self, v_supply, t_step):
         super().refresh(v_supply, t_step)
 
@@ -98,24 +112,25 @@ class Resistor(Load):
 class MCU(Load):
     def __init__(self, config):
         modes = config.get("modes")
-        active_mode = modes.get("active")
-        standby_mode = modes.get("standby")
 
+        # Class specific attributes
+        self.ACTIVE_MODE = modes.get("active")
+        self.STANDBY_MODE = modes.get("standby")
         self.V_MIN = config.get("v_min")
-        self.V_WAKE_UP = config.get("v_wake_up")
-        self.V_OPER_STANDBY = standby_mode.get("v_oper")
-        self.V_OPER_ACTIVE = active_mode.get("v_oper")
         self.V_MAX = config.get("v_max")
-        self.ACTIVE_MODE = active_mode
-        self.STANDBY_MODE = standby_mode
+        self.V_WAKE_UP = config.get("v_wake_up")
+        self.V_OPER_STANDBY = self.STANDBY_MODE.get("v_oper")
+        self.V_OPER_ACTIVE = self.ACTIVE_MODE.get("v_oper")
+        self.mode = "shutdown"
 
+        # Inherited attributes
         self.type = config.get("type")
         self.v_on = self.V_WAKE_UP
-        self.mode = "shutdown"  # "shutdown", "standby", "active"
         self.voltage = 0.0
         self.current = 0.0
         self.energy_consumed = 0.0
         self.total_energy_consumed = 0.0
+        self.program = None
 
     # TODO: Recalculate current (and energy) to include the cost from Program
     def calculate_current(self, v_supply):
@@ -131,6 +146,9 @@ class MCU(Load):
 
     def calculate_energy_consumed(self, v_supply, t_step):
         return self.voltage * self.current * t_step
+
+    def upload_software(self, program):
+        super().upload_software(program)
 
     # TODO: Update mode transitions to also include Program instructions
     def refresh(self, v_supply, t_step):
