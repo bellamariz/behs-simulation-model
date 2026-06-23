@@ -4,19 +4,21 @@ import src.behs.energystorage as storage
 import src.behs.load as load
 import src.program.program as program
 
-SUPPLY_REGISTRY = {
+_SUPPLY_REGISTRY = {
     "constant": supply.ConstantSupply,
     "harvesting": supply.HarvestingSupply,
 }
 
-STORAGE_REGISTRY = {
+_STORAGE_REGISTRY = {
     "capacitor": storage.Capacitor,
 }
 
-LOAD_REGISTRY = {
+_LOAD_REGISTRY = {
     "resistor": load.Resistor,
     "mcu": load.MCU,
 }
+
+_UPLOAD_SOFTWARE_REGISTRY = ["mcu"]
 
 
 # Generate time vector for simulation
@@ -123,21 +125,26 @@ class Input:
         storage_type = storage_cfg.get("type")
         load_type = load_cfg.get("type")
 
-        if supply_type not in SUPPLY_REGISTRY:
+        if supply_type not in _SUPPLY_REGISTRY:
             raise ValueError(f"Unsupported supply type: {supply_type!r}")
-        if storage_type not in STORAGE_REGISTRY:
+        if storage_type not in _STORAGE_REGISTRY:
             raise ValueError(f"Unsupported storage type: {storage_type!r}")
-        if load_type not in LOAD_REGISTRY:
+        if load_type not in _LOAD_REGISTRY:
             raise ValueError(f"Unsupported load type: {load_type!r}")
 
-        self.supply = SUPPLY_REGISTRY[supply_type](supply_cfg, self.t_vector)
-        self.storage = STORAGE_REGISTRY[storage_type](storage_cfg)
-        self.load = LOAD_REGISTRY[load_type](load_cfg)
+        self.supply = _SUPPLY_REGISTRY[supply_type](supply_cfg, self.t_vector)
+        self.storage = _STORAGE_REGISTRY[storage_type](storage_cfg)
+        self.load = _LOAD_REGISTRY[load_type](load_cfg)
 
-        # Load software operations when MCU Load is selected
-        if load_type == "mcu":
+        # Upload software to the Load (if applicable)
+        if load_type in _UPLOAD_SOFTWARE_REGISTRY:
             program_file = config.get("program_file")
-            mcu_active_cost = load_cfg.get("modes").get("active").get("cost")
-            mcu_standby_cost = load_cfg.get("modes").get("standby").get("cost")
-            self.program = program.Program(
-                program_file, mcu_active_cost, mcu_standby_cost)
+            cpu_active_cost = load_cfg.get("modes").get("active").get("cost")
+            cpu_standby_cost = load_cfg.get("modes").get("standby").get("cost")
+
+            # Parse Program object from file
+            prog = program.Program(
+                t_step, program_file, cpu_active_cost, cpu_standby_cost)
+
+            # Upload Program to the Load
+            self.load.upload_software(prog)
