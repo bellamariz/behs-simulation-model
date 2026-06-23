@@ -12,7 +12,7 @@ class EnergyStorage(ABC):
         self.voltage: float        # voltage (V) across the storage at time t
         self.current: float        # current (A) through the storage at time t
         self.energy_stored: float  # energy stored (J) in the buffer at time t
-        self.power_output: float   # power output (W) at time t
+        self.power_stored: float   # power stored (W) at time t
 
     # Calculates the voltage across the storage, derived from the energy stored
     @abstractmethod
@@ -26,12 +26,12 @@ class EnergyStorage(ABC):
 
     # Calculates the energy stored
     @abstractmethod
-    def calculate_energy_stored(self) -> float:
+    def calculate_energy_stored(self, e_supply: float, e_load: float) -> float:
         pass
 
-    # Calculates the power output
+    # Calculates the power stored
     @abstractmethod
-    def calculate_power_output(self) -> float:
+    def calculate_power_stored(self, t_step: float) -> float:
         pass
 
     # Refreshes the energy storage's state at each time step
@@ -41,7 +41,7 @@ class EnergyStorage(ABC):
         self.energy_stored = self.calculate_energy_stored(
             e_supply, e_load)
         self.voltage = self.calculate_voltage()
-        self.power_output = self.calculate_power_output(t_step)
+        self.power_stored = self.calculate_power_stored(t_step)
         self.current = self.calculate_current()
 
     # Prints the energy storage's state at a given time index
@@ -54,7 +54,7 @@ class EnergyStorage(ABC):
             f"voltage={self.voltage:.5f}V,"
             f"current={self.current:.5f}A,"
             f"energy_stored={self.energy_stored:.5f}J,"
-            f"power_output={self.power_output:.5f}W",
+            f"power_stored={self.power_stored:.5f}W",
             file=file
         )
 
@@ -74,7 +74,7 @@ class Capacitor(EnergyStorage):
         self.voltage = 0.0
         self.current = 0.0
         self.energy_stored = 0.0
-        self.power_output = 0.0
+        self.power_stored = 0.0
 
     # Voltage is estimated from energy stored: V(t) = sqrt(2 * E(t) / C)
     def calculate_voltage(self):
@@ -82,15 +82,16 @@ class Capacitor(EnergyStorage):
 
     # Current is estimated from power and voltage: I(t) = P(t) / V(t)
     def calculate_current(self):
-        return (self.power_output / self.voltage) if self.voltage > 0 else 0.0
+        return (self.power_stored / self.voltage) if self.voltage > 0 else 0.0
 
     # Energy stored in capacitor: E(t) = E(t-1) + Esupply(t) - Eload(t)
     def calculate_energy_stored(self, e_supply, e_load):
         energy = self.energy_stored + e_supply - e_load
         return min(energy, self.E_MAX) if energy > 0 else 0.0
 
-    # Power output is estimated: P(t) = E(t) / t_step
-    def calculate_power_output(self, t_step):
+    # Available power from storage: P(t) = E(t) / t_step
+    # Represents the maximum power the capacitor could deliver given its current stored energy.
+    def calculate_power_stored(self, t_step):
         return self.energy_stored / t_step if self.energy_stored > 0 else 0.0
 
     def refresh(self, e_supply: float, e_load: float, t_step: float) -> None:
