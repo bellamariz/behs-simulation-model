@@ -116,33 +116,46 @@ class MCU(Load):
         # Class specific attributes
         self.ACTIVE_MODE = modes.get("active")
         self.STANDBY_MODE = modes.get("standby")
+        self.SHUTDOWN_MODE = modes.get("shutdown")
         self.V_MIN = config.get("v_min")
         self.V_MAX = config.get("v_max")
-        self.V_WAKE_UP = config.get("v_wake_up")
+        self.V_OPER_SHUTDOWN = self.SHUTDOWN_MODE.get("v_oper")
         self.V_OPER_STANDBY = self.STANDBY_MODE.get("v_oper")
         self.V_OPER_ACTIVE = self.ACTIVE_MODE.get("v_oper")
-        self.mode = "shutdown"
+        self.mode = "off"
 
         # Inherited attributes
         self.type = config.get("type")
-        self.v_on = self.V_WAKE_UP
+        self.v_on = self.V_MIN
         self.voltage = 0.0
         self.current = 0.0
         self.energy_consumed = 0.0
         self.total_energy_consumed = 0.0
         self.program = None
 
-    # TODO: Recalculate current (and energy) to include the cost from Program
     def calculate_current(self, v_supply):
+        # We only execute the program if the MCU is in active mode
         if self.mode == "active":
-            return self.ACTIVE_MODE.get("cost")
+            cpu_cost = self.ACTIVE_MODE.get("cost")
+            if self.program is not None:
+                op = self.program.get_executing_operation()
+                if op is not None:
+                    if op.instruction in ("ACTIVE", "STANDBY"):
+                        return op.cost
+                    elif op.instruction not in ("LOOP", "END"):
+                        return cpu_cost + op.cost
+            return cpu_cost
         elif self.mode == "standby":
             return self.STANDBY_MODE.get("cost")
+        elif self.mode == "shutdown":
+            return self.SHUTDOWN_MODE.get("cost")
         else:
             return 0.0
 
     def calculate_voltage(self, v_supply):
-        return v_supply if v_supply >= self.V_MIN else 0.0
+        if v_supply >= self.v_on:
+            return v_supply
+        return 0.0
 
     def calculate_energy_consumed(self, v_supply, t_step):
         return self.voltage * self.current * t_step
@@ -150,18 +163,25 @@ class MCU(Load):
     def upload_software(self, program):
         super().upload_software(program)
 
-    # TODO: Update mode transitions to also include Program instructions
     def refresh(self, v_supply, t_step):
-        super().refresh(v_supply, t_step)
-
+        # Update mode before calculating energy so costs reflect current state
         if v_supply < self.V_MIN:
-            self.mode = "shutdown"
-        elif v_supply >= self.V_WAKE_UP and v_supply < self.V_OPER_STANDBY:
+            self.mode = "off"
+        elif self.V_MIN <= v_supply < self.V_OPER_SHUTDOWN:
             self.mode = "idle"
-        elif v_supply >= self.V_OPER_STANDBY and v_supply < self.V_OPER_ACTIVE:
+        elif self.V_OPER_SHUTDOWN <= v_supply < self.V_OPER_STANDBY:
+            self.mode = "shutdown"
+        elif self.V_OPER_STANDBY <= v_supply < self.V_OPER_ACTIVE:
             self.mode = "standby"
         elif v_supply >= self.V_OPER_ACTIVE:
             self.mode = "active"
+
+        # Update Load state
+        super().refresh(v_supply, t_step)
+
+        # Advance program counter after energy is calculated for time step
+        if self.mode == "active" and self.program is not None:
+            self.program.t_steps_completed += 1
 
     def print(self, t_index, file):
         super().print(t_index, file)

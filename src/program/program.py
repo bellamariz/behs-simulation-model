@@ -61,6 +61,26 @@ class Program:
         self.t_steps_needed = sum(op.t_steps_needed for op in self.operations)
         self.t_steps_completed = 0
 
+    # Returns the executing Operation for current time step
+    def get_executing_operation(self) -> 'Operation':
+        if self.t_steps_needed == 0:
+            return None
+
+        # Get the index of the current time step in the program execution
+        index = self.t_steps_completed % self.t_steps_needed
+
+        # Search through Operations list to find the one currently executing
+        steps = 0
+        for op in self.operations:
+            if op.t_steps_needed == 0:
+                continue
+
+            steps += op.t_steps_needed
+            if index < steps:
+                return op
+
+        return None
+
     # Print Operations list of the Program object
     def print_operations(self):
         for i, op in enumerate(self.operations):

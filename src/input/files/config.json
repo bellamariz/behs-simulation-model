@@ -15,9 +15,9 @@
   "load": {
     "type": "mcu",
     "v_min": 1.8,
-    "v_wake_up": 2.0,
     "v_max": 3.6,
     "modes": {
+      "shutdown": { "cost": 0.0000003, "clock": 0.0, "v_oper": 2.0 },
       "standby": { "cost": 0.000001, "clock": 0.05, "v_oper": 2.2 },
       "active": { "cost": 0.001920, "clock": 16, "v_oper": 3.0 }
     }

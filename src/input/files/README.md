@@ -153,29 +153,35 @@ The configuration parameters are:
 |---|---|---|
 | **type** | `string` | Type of supply, value is `"mcu"`. |
 | **v_min** | `float` | Minimum operating voltage. |
-| **v_wake_up** | `float` | Minimum voltage necessary to wake-up the MCU from `"shutdown"`. |
 | **v_max** | `float` | Maximum operating voltage. |
 | **modes** | `dict` | List of CPU operating modes, their energy cost (in A), clock frequency (in MHz) and operating voltage (in V). |
 | **program** | `string` | Path to the script file that represents software being executed by the MCU. |
 
 For example, if considering an actual MCU [Texas Instruments MSP430FR5994](https://www.ti.com/lit/ds/slase54d/slase54d.pdf?ts=1781671720297).
 
-And making the following assumptions: 
+We have the following operating modes:
+
+- **active** - Active mode; CPU is on; maximum current consumption; all features are available; executes any programmed software.
+- **standby** - Low-power mode; CPU is sleeping; current consumption is low; many features still available (wake-up/interrupt events, data retention and some peripherals).
+- **shutdown** - Shutdown mode; CPU is off; minimal current consumption; only supply voltage supervisor is available.
+
+By assuming the following information from the **MSP430FR5994** datasheet:
 
 - Operating temperature is 25ºC;
-- Low-power mode is LPM1 (since we want power monitoring and interrupt capabilities);
-- Clock is run at 16MHz on active mode (FRAM on);
+- Chosen standby mode is LPM2 (includes supply voltage supervisor and interrupt capabilities);
+- Chosen shutdown mode is LPM4.5 (includes supply voltage supervisor); 
+- Clock is running at 16MHz on active mode with FRAM on.
 
-The configuration is:
+The `MCU` configuration is:
 
 ```json
 {
   "load": {
     "type": "mcu",
     "v_min": 1.8,
-    "v_wake_up": 2.0,
     "v_max": 3.6,
     "modes": {
+      "shutdown": { "cost": 0.0000003, "clock": 0.0, "v_oper": 2.0 },
       "standby": { "cost": 0.000001, "clock": 0.05, "v_oper": 2.2 },
       "active": { "cost": 0.001920, "clock": 16, "v_oper": 3.0 }
     }
@@ -195,11 +201,13 @@ The list of default available operations are:
 |---|---|---|---|---|---|
 | CPU | cpu_standby | `STANDBY` | CPU is in low-power mode | Depends on `MCU` **modes** |
 | CPU | cpu_processing | `ACTIVE` | CPU is in active power mode | Depends on `MCU` **modes** |
+| Task | loop_start | `LOOP` | Indicates a loop start | 0 |
+| Task | loop_end | `END` | Indicates a loop end | 0 |
 | Task | sensing | `SENSE` | Reading sensor data | 0.006 |
 | Task | transmitting | `TX` | Transmitting communication data | 0.03 |
 | Task | receiving | `RX` | Receiving communication data | 0.027 |
 
-> The Tasks and their costs are based on the work done by [Climent et al](https://onlinelibrary.wiley.com/doi/full/10.1002/cpe.3151).
+> The sensing, transmitting and receiving tasks are based on the work done by [Climent et al](https://onlinelibrary.wiley.com/doi/full/10.1002/cpe.3151).
 
 The user MUST include a script file that defines the program sequence they wish to execute. Each line of the script must be an instruction followed by its execution time in seconds.
 
@@ -222,8 +230,6 @@ The path to this script file is included on the configuration file as well:
 }
 ```
 
-The total charge of each instruction is given by `Cost I(A) * Duration dt(s)` and the energy consumed is `Charge(C) * Supply Voltage(V)`.
-
 ## 4. Example of Complete Configuration File
 
 ```json
@@ -244,9 +250,9 @@ The total charge of each instruction is given by `Cost I(A) * Duration dt(s)` an
   "load": {
     "type": "mcu",
     "v_min": 1.8,
-    "v_wake_up": 2.0,
     "v_max": 3.6,
     "modes": {
+      "shutdown": { "cost": 0.0000003, "clock": 0.0, "v_oper": 2.0 },
       "standby": { "cost": 0.000001, "clock": 0.05, "v_oper": 2.2 },
       "active": { "cost": 0.001920, "clock": 16, "v_oper": 3.0 }
     }
