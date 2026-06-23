@@ -58,8 +58,10 @@ class Program:
         self.CPU_STANDBY_COST = cpu_standby_cost
 
         self.operations = self._parse_operations(operations_from_file, t_step)
-        self.t_steps_needed = sum(op.t_steps_needed for op in self.operations)
         self.t_steps_completed = 0
+        self.t_steps_needed = sum(op.t_steps_needed for op in self.operations)
+        self.total_cost = sum(op.cost for op in self.operations)
+        self.total_duration = t_step * self.t_steps_needed
 
     # Returns the executing Operation for current time step
     def get_executing_operation(self) -> 'Operation':
@@ -90,7 +92,9 @@ class Program:
     # Print Program attributes
     def print(self):
         print(f"=== Executed Program: {self.FILEPATH} ===")
-        print(f"t_steps_needed={self.t_steps_needed},")
+        print(f"total_steps={self.t_steps_needed},")
+        print(f"total_duration={self.total_duration:.5f}s,")
+        print(f"total_cost={self.total_cost:.5f}A,")
         print("operations=")
         self.print_operations()
 
