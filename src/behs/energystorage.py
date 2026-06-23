@@ -94,6 +94,12 @@ class Capacitor(EnergyStorage):
     def calculate_power_stored(self, t_step):
         return self.energy_stored / t_step if self.energy_stored > 0 else 0.0
 
+    # Capacitor's state is refreshed based on energy supply and load consumption
+    # - If more energy is consumed than supplied, the capacitor is "discharging"
+    # - If more energy is supplied than consumed, the capacitor is "charging"
+    # - If supply and consumption are equal, the capacitor is "idle"
+    # - If energy stored reaches E_MAX, the capacitor is "full"
+    # - If energy stored is zero, the capacitor is "empty"
     def refresh(self, e_supply: float, e_load: float, t_step: float) -> None:
         super().refresh(e_supply, e_load, t_step)
 
