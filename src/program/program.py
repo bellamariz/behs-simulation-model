@@ -119,8 +119,10 @@ class Program:
             # Validate duration
             duration = float(parts[1]) if len(parts) == 2 else 0.0
 
-            # Build new Operation object
-            new_op = _OPERATION_REGISTRY[instruction]
+            # Build new Operation object (copy to avoid mutating registry)
+            registry_op = _OPERATION_REGISTRY[instruction]
+            new_op = Operation(
+                name=registry_op.name, instruction=registry_op.instruction, cost=registry_op.cost)
             new_op.duration = duration
 
             # Number of simulation steps needed to complete the operation
