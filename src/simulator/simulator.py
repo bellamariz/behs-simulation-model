@@ -6,10 +6,10 @@ def run(sim_input):
     t_step = sim_input.t_step
     t_vector = sim_input.t_vector
 
-    # For each time t in the simulation:
-    #   1. supply  — Compute energy supplied at time t
-    #   2. load    — Compute energy consumed at time t, based on last storage state
-    #   3. storage — Update storage state based on supply and load
+    # For each time t in the simulation, refresh values for:
+    #   1. Energy Supply  — Update energy supplied at time t.
+    #   2. Load  — Update energy consumed at time t, based on Energy Storage state at t-1.
+    #   3. Energy Storage — Update energy stored at time t, based on updated Energy Supply and Load.
     sim_output = {}
     for i, t in enumerate(t_vector):
         sim_input.supply.refresh(t_index=i, t_step=t_step)
