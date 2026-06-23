@@ -106,6 +106,8 @@ class Capacitor(EnergyStorage):
             self.status = "charging"
         elif delta_energy < 0:
             self.status = "discharging"
+        else:
+            self.status = "idle"
 
     def print(self, t_index, file):
         super().print(t_index, file)
