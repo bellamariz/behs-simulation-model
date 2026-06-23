@@ -69,9 +69,8 @@ class Program:
 
     # Print Program attributes
     def print(self):
-        print(f"file={self.FILEPATH},")
+        print(f"=== Executed Program: {self.FILEPATH} ===")
         print(f"t_steps_needed={self.t_steps_needed},")
-        print(f"t_steps_completed={self.t_steps_completed},")
         print("operations=")
         self.print_operations()
 
