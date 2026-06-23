@@ -10,9 +10,9 @@ def write_to_log(sim_output):
         for t, data in sim_output.items():
             print(f"Time step {t}: t={t:.3f}s\n", file=logfile)
             print(
-                f"  Supply: type={data['supply']['type']}, energy={data['supply']['energy_supply']:.5f}J, power={data['supply']['power_output']:.5f}W", file=logfile)
+                f"  Supply: type={data['supply']['type']}, energy={data['supply']['energy_supply']:.5f}J, power={data['supply']['power_supply']:.5f}W", file=logfile)
             print(
-                f"  Storage: type={data['storage']['type']}, status={data['storage']['status']}, voltage={data['storage']['voltage']:.5f}V, current={data['storage']['current']:.5f}A, energy={data['storage']['energy_stored']:.5f}J, power={data['storage']['power_output']:.5f}W", file=logfile)
+                f"  Storage: type={data['storage']['type']}, status={data['storage']['status']}, voltage={data['storage']['voltage']:.5f}V, current={data['storage']['current']:.5f}A, energy={data['storage']['energy_stored']:.5f}J, power={data['storage']['power_stored']:.5f}W", file=logfile)
             print(
                 f"  Load: type={data['load']['type']}, status={data['load']['mode']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.5f}A, energy={data['load']['energy_consumed']:.5f}J, total_energy_consumed={data['load']['total_energy_consumed']:.5f}J\n", file=logfile)
             print("-" * 50, file=logfile)
@@ -34,7 +34,7 @@ def write_to_csv(sim_output):
                 "status": "NaN",
                 "voltage": "NaN",
                 "current": "NaN",
-                "power": data['supply']['power_output'],
+                "power": data['supply']['power_supply'],
                 "energy": data['supply']['energy_supply'],
                 "total_energy_consumed": "NaN",
             })
@@ -45,7 +45,7 @@ def write_to_csv(sim_output):
                 "status": data['storage']['status'],
                 "voltage": data['storage']['voltage'],
                 "current": data['storage']['current'],
-                "power": data['storage']['power_output'],
+                "power": data['storage']['power_stored'],
                 "energy": data['storage']['energy_stored'],
                 "total_energy_consumed": "NaN",
             })

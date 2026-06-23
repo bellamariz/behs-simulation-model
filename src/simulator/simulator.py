@@ -24,7 +24,7 @@ def run(sim_input):
         sim_output[t] = {
             "supply": {
                 "type": sim_input.supply.type,
-                "power_output": sim_input.supply.power_output,
+                "power_supply": sim_input.supply.power_supply,
                 "energy_supply": sim_input.supply.energy_supply,
             },
             "storage": {
@@ -33,7 +33,7 @@ def run(sim_input):
                 "voltage": sim_input.storage.voltage,
                 "current": sim_input.storage.current,
                 "energy_stored": sim_input.storage.energy_stored,
-                "power_output": sim_input.storage.power_output,
+                "power_stored": sim_input.storage.power_stored,
             },
             "load": {
                 "type": sim_input.load.type,

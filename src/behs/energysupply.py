@@ -26,15 +26,15 @@ class EnergySupply(ABC):
     @abstractmethod
     def __init__(self):
         self.type: str
-        self.power_output: float    # power output (W) at time t
+        self.power_supply: float    # power supply (W) at time t
         self.energy_supply: float  # energy supply (J) at time t
         self.profile: list[float]   # power profile over time (W)
 
     # Refreshes the energy supply's state at each time step
     @abstractmethod
     def refresh(self, t_index: int, t_step: float) -> None:
-        self.power_output = self.profile[t_index]
-        self.energy_supply = self.power_output * t_step
+        self.power_supply = self.profile[t_index]
+        self.energy_supply = self.power_supply * t_step
 
     # Prints the energy supply's state at given time index
     @abstractmethod
@@ -42,7 +42,7 @@ class EnergySupply(ABC):
         print(
             f"Energy Supply: {self.type} --> "
             f"t={t_index},"
-            f"power_output={self.power_output:.5f}W,"
+            f"power_supply={self.power_supply:.5f}W,"
             f"energy_supply={self.energy_supply:.5f}J",
             file=file
         )
@@ -55,7 +55,7 @@ class ConstantSupply(EnergySupply):
         p_base = config.get("p_base")
 
         self.type = config.get("type")
-        self.power_output = 0.0
+        self.power_supply = 0.0
         self.energy_supply = 0.0
         self.profile = [p_base] * len(t_vector)
 
@@ -79,7 +79,7 @@ class HarvestingSupply(EnergySupply):
             profile = [random.uniform(0.0, 1.0) for _ in range(len(t_vector))]
 
         self.type = config.get("type")
-        self.power_output = 0.0
+        self.power_supply = 0.0
         self.energy_supply = 0.0
         self.profile = profile
 
