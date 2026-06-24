@@ -4,6 +4,8 @@ import src.behs.energystorage as storage
 import src.behs.load as load
 import src.program.program as program
 
+CONFIG_FILE_PATH = "src/input/files/config.json"
+
 _SUPPLY_REGISTRY = {
     "constant": supply.ConstantSupply,
     "harvesting": supply.HarvestingSupply,

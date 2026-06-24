@@ -22,5 +22,5 @@
       "active": { "cost": 0.001920, "clock": 16, "v_oper": 3.0 }
     }
   },
-  "program_file": "src/input/files/program01.txt"
+  "program_file": "program01.txt"
 }
