@@ -3,8 +3,6 @@
 import h5py
 import pandas as pd
 import numpy as np
-# Folder path to directory with EH profile files that will be parsed by EHDataParser class
-_EH_PROFILE_FILES_DIR = "src/eh/files/"
 
 
 # Parser class for a TEG Energy Harvester dataset in HDF5 format.
@@ -14,18 +12,19 @@ _EH_PROFILE_FILES_DIR = "src/eh/files/"
 # Source DOI: https://dl.acm.org/doi/10.1145/3485730.3494111
 # Dataset: https://dataverse.lib.virginia.edu/dataset.xhtml?persistentId=doi:10.18130/V3/M9CP9C
 class TEGDataHDF5Parser:
-    def __init__(self, input_filename="TP001_env1.h5", output_filename="dataset-teg.csv"):
+    INPUT_FILEPATH = "src/eh/files/TP001_env1.h5"
+
+    def __init__(self, output_filepath):
         self.V_OUT = 3.3  # output voltage (V) of the LTC3108 boost converter
         self.SAMPLING_PERIOD = 0.5  # in seconds
 
-        self.input_filepath = _EH_PROFILE_FILES_DIR + input_filename
-        self.output_filepath = _EH_PROFILE_FILES_DIR + output_filename
+        self.output_filepath = output_filepath
         self.df = self._parse_to_dataframe()
         self.duration = self.df.index[-1] - self.df.index[0]
 
     # Parses the HDF5 dataset into a useable pandas dataframe
     def _parse_to_dataframe(self):
-        with h5py.File(self.input_filepath, "r") as f:
+        with h5py.File(self.INPUT_FILEPATH, "r") as f:
             key = list(f.keys())[0]
             g = f[key]
 
@@ -119,8 +118,8 @@ class TEGDataHDF5Parser:
 
 
 # Calls TEGDataHDF5Parser class
-def teg_dataset_to_csv():
-    parser = TEGDataHDF5Parser()
+def teg_dataset_to_csv(output_filepath):
+    parser = TEGDataHDF5Parser(output_filepath)
     output = parser.parse_output()
     parser.print_output(output)
     parser.write_output_to_csv(output)

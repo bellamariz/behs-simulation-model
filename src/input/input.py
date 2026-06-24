@@ -2,6 +2,7 @@ import json
 import src.behs.energysupply as supply
 import src.behs.energystorage as storage
 import src.behs.load as load
+from src.eh import eh
 import src.program.program as program
 
 CONFIG_FILE_PATH = "src/input/files/config.json"
@@ -22,11 +23,21 @@ _LOAD_REGISTRY = {
 
 _UPLOAD_SOFTWARE_REGISTRY = ["mcu"]
 
+_SET_UP_EH_SUPPLY_PROFILE_REGISTRY = ["harvesting"]
+
 
 # Generate time vector for simulation
-def generate_t_vector(start, end, interval):
+def _generate_t_vector(start, end, interval):
     return [start + i *
             interval for i in range(int((end - start) / interval) + 1)]
+
+
+# Set up energy profile file for HarvestingSupply class, parsing a real EH dataset from HDF5 to CSV
+# It reads the EH dataset and generates a CSV with results, writing to output_filepath.
+def set_up_eh_supply_profile_file(supply_cfg):
+    if supply_cfg.get("type") in _SET_UP_EH_SUPPLY_PROFILE_REGISTRY:
+        output_filepath = supply_cfg.get("profile_filepath")
+        eh.teg_dataset_to_csv(output_filepath)
 
 
 # Load simulation configuration from JSON input file
@@ -104,6 +115,7 @@ def load_config_from_ui(values):
     return config
 
 
+# The Input class configures all the simulation parameters
 class Input:
     def __init__(self, config: dict):
         # Load simulation parameters
@@ -115,7 +127,7 @@ class Input:
                 "Simulation 'step' and 'duration' must be specified in the config.")
 
         self.t_step = t_step
-        self.t_vector = generate_t_vector(
+        self.t_vector = _generate_t_vector(
             start=0, end=t_duration, interval=t_step)
 
         # Load Energy Harvesting parameters
@@ -134,13 +146,14 @@ class Input:
         if load_type not in _LOAD_REGISTRY:
             raise ValueError(f"Unsupported load type: {load_type!r}")
 
-        self.supply = _SUPPLY_REGISTRY[supply_type](supply_cfg, self.t_vector)
+        self.supply = _SUPPLY_REGISTRY[supply_type](
+            supply_cfg, self.t_vector, self.t_step)
         self.storage = _STORAGE_REGISTRY[storage_type](storage_cfg)
         self.load = _LOAD_REGISTRY[load_type](load_cfg)
 
         # Upload software to the Load (if applicable)
         if load_type in _UPLOAD_SOFTWARE_REGISTRY:
-            program_file = config.get("program_file")
+            program_file = config.get("program_filepath")
             cpu_active_cost = load_cfg.get("modes").get("active").get("cost")
             cpu_standby_cost = load_cfg.get("modes").get("standby").get("cost")
 

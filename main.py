@@ -10,6 +10,10 @@ def run_manual():
     # Initializes the simulation input configuration
     config = inp.load_config_from_file(inp.CONFIG_FILE_PATH)
 
+    # Uncomment to generate "profile_filepath" file for EnergySupply (when applicable)
+    # File only needs to be generated once, and can be reused for all simulations.
+    # inp.set_up_eh_supply_profile_file(config.get("supply"))
+
     sim_input = inp.Input(config)
 
     # Run simulation for given input params
@@ -62,12 +66,10 @@ def run_ui():
 
 
 def main():
-    # Parses a real EH dataset from HDF5 to CSV
-    eh.teg_dataset_to_csv()
-
     # Uncomment the line below to run the simulation with a manual configuration
     run_manual()
 
+    # TODO: Update interface to consider new simulation parameters
     # Uncomment the line below to run the simulation with a UI for input configuration
     # run_ui()
 
