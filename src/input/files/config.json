@@ -4,8 +4,10 @@
     "step": 0.25
   },
   "supply":{
-    "type": "constant",
-    "p_base": 0.05
+    "type": "harvesting",
+    "p_base": 0.05,
+    "sampling_period": 0.5,
+    "profile_filepath": "src/eh/files/dataset-teg.csv"
   },
   "storage": {
     "type": "capacitor",
@@ -22,5 +24,5 @@
       "active": { "cost": 0.001920, "clock": 16, "v_oper": 3.0 }
     }
   },
-  "program_file": "program01.txt"
+  "program_filepath": "src/program/files/program01.txt"
 }

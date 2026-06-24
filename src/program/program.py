@@ -45,16 +45,12 @@ _OPERATION_REGISTRY = {
     "RX": Operation(name="receiving", instruction="RX", cost=0.027),
 }
 
-# Folder path to directory with program files that will be parsed by Program class
-_PROGRAM_FILES_DIR = "src/program/files/"
-
 
 # Class Program represents a script of code that will be executed by the MCU Load
 # It reads the program file and loads the operations and their duration
 # We assume only ONE Operation is executed per simulation time step.
 class Program:
-    def __init__(self, t_step: float, filename: str, cpu_active_cost: float, cpu_standby_cost: float):
-        filepath = _PROGRAM_FILES_DIR + filename
+    def __init__(self, t_step: float, filepath: str, cpu_active_cost: float, cpu_standby_cost: float):
         operations_from_file = self._parse_program_file(filepath)
 
         self.FILEPATH = filepath
