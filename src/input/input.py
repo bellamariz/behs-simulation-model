@@ -2,6 +2,7 @@ import json
 import src.behs.energysupply as supply
 import src.behs.energystorage as storage
 import src.behs.load as load
+import src.behs.pmic as pmic
 from src.eh import eh
 import src.program.program as program
 
@@ -19,6 +20,10 @@ _STORAGE_REGISTRY = {
 _LOAD_REGISTRY = {
     "resistor": load.Resistor,
     "mcu": load.MCU,
+}
+
+_PMIC_REGISTRY = {
+    "boost_buck": pmic.BoostBuckPMIC,
 }
 
 _UPLOAD_SOFTWARE_REGISTRY = ["mcu"]
@@ -130,7 +135,7 @@ class Input:
         self.t_vector = _generate_t_vector(
             start=0, end=t_duration, interval=t_step)
 
-        # Load Energy Harvesting parameters
+        # Load BEHS parameters: Energy Supply, Energy Storage, Load
         supply_cfg = config.get("supply")
         storage_cfg = config.get("storage")
         load_cfg = config.get("load")
@@ -150,6 +155,16 @@ class Input:
             supply_cfg, self.t_vector, self.t_step)
         self.storage = _STORAGE_REGISTRY[storage_type](storage_cfg)
         self.load = _LOAD_REGISTRY[load_type](load_cfg)
+        self.pmic = None
+
+        # Load BEHS parameters: PMIC (if applicable)
+        pmic_cfg = config.get("pmic")
+
+        if pmic_cfg is not None:
+            pmic_type = pmic_cfg.get("type")
+            if pmic_type not in _PMIC_REGISTRY:
+                raise ValueError(f"Unsupported PMIC type: {pmic_type!r}")
+            self.pmic = _PMIC_REGISTRY[pmic_type](pmic_cfg)
 
         # Upload software to the Load (if applicable)
         if load_type in _UPLOAD_SOFTWARE_REGISTRY:

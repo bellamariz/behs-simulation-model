@@ -63,7 +63,7 @@ class Load(ABC):
 
 
 # Class Resistor for the BEHS simulation model, inheriting from Load Class
-# It represents a resistor, consuming energy based on its resistance
+# It represents a resistor, a Load that consumes constant energy
 class Resistor(Load):
     def __init__(self, config):
         # Class specific attributes
@@ -111,7 +111,7 @@ class Resistor(Load):
 
 
 # Class MCU for the BEHS simulation model, inheriting from Load Class
-# It represents a microcontroller unit (MCU), consuming energy based on its specs
+# It represents a microcontroller unit (MCU), a Load that consumes variable energy.
 class MCU(Load):
     def __init__(self, config):
         modes = config.get("modes")

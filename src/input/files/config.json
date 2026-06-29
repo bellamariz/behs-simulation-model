@@ -14,6 +14,20 @@
     "capacitance": 0.1,
     "v_oper_max": 5.5
   },
+  "pmic": {
+    "type": "boost_buck",
+    "v_in_cold_start": 0.6,
+    "v_boost_thresh": 1.8,
+    "v_bat_ov": 5.5,
+    "v_bat_uv": 2.0,
+    "v_bat_ok_low": 2.2,
+    "v_bat_ok_high": 2.8,
+    "v_out_reg": 3.3,
+    "mppt_efficiency": 0.95,
+    "boost_efficiency": 0.80,
+    "buck_efficiency": 0.90,
+    "cold_start_efficiency": 0.50
+  },
   "load": {
     "type": "mcu",
     "v_min": 1.8,
