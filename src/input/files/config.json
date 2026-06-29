@@ -4,54 +4,25 @@
     "step": 0.25
   },
   "supply":{
-    "type": "constant",
-    "v_base": 8.0
+    "type": "harvesting",
+    "p_base": 0.05,
+    "sampling_period": 0.5,
+    "profile_filepath": "src/eh/files/dataset-teg.csv"
   },
   "storage": {
     "type": "capacitor",
     "capacitance": 0.1,
-    "v_oper_max": 5.5,
-    "r_charge": 510
+    "v_oper_max": 5.5
   },
   "load": {
     "type": "mcu",
     "v_min": 1.8,
-    "v_wake_up": 2,
-    "v_oper_low": 2.2,
-    "v_oper_active": 3.0,
     "v_max": 3.6,
     "modes": {
-      "shutdown": 0,
-      "low_power": 0.000092,
-      "active": 0.00048
-    },
-    "program": "src/input/files/program01.script"
-  },
-  "actions": [
-    {
-      "action": "sleeping",
-      "instruction": "SLEEP",
-      "cost": 0.00012
-    },
-    {
-      "action": "sensing",
-      "instruction": "SENSE",
-      "cost": 0.006
-    },
-    {
-      "action": "transmitting",
-      "instruction": "TX_ON",
-      "cost": 0.03
-    },
-    {
-      "action": "receiving",
-      "instruction": "RX_ON",
-      "cost": 0.027
-    },
-    {
-      "action": "processing",
-      "instruction": "CPU_PROC",
-      "cost": 0
+      "shutdown": { "cost": 0.0000003, "clock": 0.0, "v_oper": 2.0 },
+      "standby": { "cost": 0.000001, "clock": 0.05, "v_oper": 2.2 },
+      "active": { "cost": 0.001920, "clock": 16, "v_oper": 3.0 }
     }
-  ]
+  },
+  "program_filepath": "src/program/files/program01.txt"
 }

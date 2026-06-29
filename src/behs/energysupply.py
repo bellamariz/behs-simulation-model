@@ -1,4 +1,5 @@
 import random
+import pandas as pd
 
 # According to the literature, an BEHS model has one of these three energy profiles:
 #
@@ -14,89 +15,106 @@ import random
 #
 # For now, this model will assume a more simplified behavior, with two types of energy supply:
 #
-# 1- Constant Supply: A constant voltage supply, e.g., a battery.
-# 2- Harvesting Supply: A variable voltage supply, e.g., a solar panel.
+# 1- Constant Supply: A constant power supply (e.g., a battery or regulated source).
+# 2- Harvesting Supply: A variable power supply loaded from a real energy harvesting dataset.
 
 from abc import ABC, abstractmethod
 
 
 # Class EnergySupply for the BEHS simulation model
-# It represents the energy supply, a circuit component that provides energy to the system
+# It represents the energy supply, a component that provides energy to the system.
 class EnergySupply(ABC):
     @abstractmethod
     def __init__(self):
         self.type: str
-        self.voltage: float  # supplied voltage at a given time index, in Voltz
-        self.profile: list[float]
+        # filepath for the energy supply profile (if applicable)
+        self.filepath: str
+        self.power_supply: float    # power supply (W) at time t
+        self.energy_supply: float  # energy supply (J) at time t
+        self.profile: list[float]   # power profile over time (W)
 
-    # Shows the voltage being supplied at a given time index
+    # Refreshes the energy supply's state at each time step
     @abstractmethod
-    def refresh(self, t_index: int) -> None:
-        self.voltage = self.profile[t_index]
+    def refresh(self, t_index: int, t_step: float) -> None:
+        self.power_supply = self.profile[t_index]
+        self.energy_supply = self.power_supply * t_step
 
-    # Prints the energy supply's state at a given time index
+    # Prints the energy supply's state at given time index
     @abstractmethod
     def print(self, t_index: int, file) -> None:
         print(
             f"Energy Supply: {self.type} --> "
             f"t={t_index},"
-            f"voltage={self.voltage:.5f}V",
+            f"power_supply={self.power_supply:.5f}W,"
+            f"energy_supply={self.energy_supply:.5f}J",
             file=file
         )
 
 
 # Class ConstantSupply for the BEHS simulation model, inheriting from EnergySupply Class
-# It represents a constant voltage supply
+# It represents a constant power supply.
 class ConstantSupply(EnergySupply):
-    def __init__(self, config, t_vector):
-        v_base = config.get("v_base")
+    def __init__(self, config, t_vector, t_step):
+        p_base = config.get("p_base")
 
         self.type = config.get("type")
-        self.voltage = 0.0
-        self.profile = [v_base] * len(t_vector)
+        self.filepath = ""
+        self.power_supply = 0.0
+        self.energy_supply = 0.0
+        self.profile = [p_base] * len(t_vector)
 
-    def refresh(self, t_index):
-        super().refresh(t_index)
+    def refresh(self, t_index, t_step):
+        super().refresh(t_index, t_step)
 
     def print(self, t_index, file):
         super().print(t_index, file)
 
 
 # Class HarvestingSupply for the BEHS simulation model, inheriting from EnergySupply Class
-# It represents a variable voltage supply loaded from a real energy harvesting dataset
+# It represents a variable power supply loaded from a real energy harvesting dataset.
 class HarvestingSupply(EnergySupply):
-    def __init__(self, config, t_vector):
-        profile = []
-        sampling_period = config.get("sampling_period")
-        filename = config.get("filename")
-        if filename:
-            profile = self._load_and_resample(
-                filename, sampling_period, t_vector)
-        else:
-            profile = [random.uniform(0.0, 10.0)
-                       for _ in range(len(t_vector))]
+    def __init__(self, config, t_vector, t_step):
+        self.SIM_STEP = t_step
+        self.SIM_TOTAL_STEPS = len(t_vector)
+        self.SAMPLING_PERIOD = config.get("sampling_period")
 
         self.type = config.get("type")
-        self.voltage = 0.0
-        self.profile = profile
+        self.filepath = config.get("profile_filepath")
+        self.power_supply = 0.0
+        self.energy_supply = 0.0
+        self.profile = self._parse_profile_from_dataset()
 
-    def _load_and_resample(self, filename, sampling_period, t_vector):
-        with open(filename, "r") as f:
-            raw = [float(line.strip()) for line in f if line.strip()]
+    def _parse_profile_from_dataset(self):
+        # Reads the CSV file into a dataframe
+        df = pd.read_csv(self.filepath, index_col="timestamp")
+
+        # Gets column with power output data
+        raw = df["power_out_w"].tolist()
         if not raw:
-            return [0.0] * len(t_vector)
+            print(
+                f"Warning: Dataset for {self.filepath} is empty or missing 'power_out_w' column.")
+            return [0.0] * self.SIM_TOTAL_STEPS
+
+        # Resamples the power output data to match the simulation time steps
         result = []
-        for t in t_vector:
-            # Wrap around dataset if simulation is longer than the dataset
-            raw_idx = (t / sampling_period) % len(raw)
-            lo = int(raw_idx)
+        for sim_idx in range(self.SIM_TOTAL_STEPS):
+            # Map simulation time step to the dataset's sampling period
+            dataset_idx = ((sim_idx * self.SIM_STEP) /
+                           self.SAMPLING_PERIOD) % len(raw)
+
+            # Use linear interpolation
+            # To better estimate fractional the value between two samples
+            lo = int(dataset_idx)
             hi = (lo + 1) % len(raw)
-            frac = raw_idx - lo
+            frac = dataset_idx - lo
+
+            # Append the interpolated value to the result list
             result.append(raw[lo] + frac * (raw[hi] - raw[lo]))
+
         return result
 
-    def refresh(self, t_index):
-        super().refresh(t_index)
+    def refresh(self, t_index, t_step):
+        super().refresh(t_index, t_step)
 
     def print(self, t_index, file):
         super().print(t_index, file)

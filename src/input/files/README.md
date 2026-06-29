@@ -22,7 +22,7 @@ For example:
 }
 ```
 
-## 2. BEHS Parameters
+## 2. Energy Harvesting System Parameters
 
 ### 2.1. Energy Supply
 
@@ -37,7 +37,7 @@ The configuration parameters are:
 | Parameter | Type | Description |
 |---|---|---|
 | **type** | `string` | Type of supply, value is `"constant"`. |
-| **v_base** | `float` | Base value for constant voltage supply. |
+| **p_base** | `float` | Base power value for constant supply (in Watts). |
 
 For example:
 
@@ -45,12 +45,12 @@ For example:
 {
   "supply":{
     "type": "constant",
-    "v_base": 8.0
+    "p_base": 0.05
   }
 }
 ```
 
-This will generate a **profile** attribute for the `ConstantSupply` class, which is a vector of size `duration / step`, where each simulation step will assume a energy supply value of **v_base**.
+This will generate a **profile** attribute for the `ConstantSupply` class, which is a vector of size **duration** / **step**. Each simulation step will estimate an energy supply value of **profile[t]** / **step**.
 
 #### 2.1.2 Harvesting (Generic)
 
@@ -80,7 +80,7 @@ The user MUST include a text file containing the energy profile measurements gat
 
 Public datasets of real Energy Harvesting measurements are readily available online, for example, [Long-Term Tracing of Indoor Solar Harvesting](https://zenodo.org/records/3363925).
 
-The normalized data will be loaded into the **profile** attribute of the `HarvestingSupply` class, which is a vector of size `duration / step`. Each simulation step will assume an energy supply value normalized from **filename**.
+The normalized data will be loaded into the **profile** attribute of the `HarvestingSupply` class, which is a vector of size **duration** / **step**. Each simulation step will estimate an energy supply value of **profile[t]** / **step**.
 
 
 ### 2.2. Energy Storage
@@ -98,7 +98,6 @@ The configuration parameters are as follows.
 | **type** | `string` | Type of storage, value is `"capacitor"`. |
 | **capacitance** | `float` | Capacitance value of capacitor (in F). |
 | **v_oper_max** | `float` | Maximum operating voltage (in Volts). |
-| **r_charge** | `float` | User-defined series resistance (in Ohms). | 
 
 These values can be easily acquired from the capacitor datasheet. For example, for the [FTW0H104ZF](https://www.digikey.com.br/en/products/detail/kemet/FTW0H104ZF/4290862) capacitor and a series resistance of 510 Ohm, we have:
 
@@ -108,7 +107,6 @@ These values can be easily acquired from the capacitor datasheet. For example, f
     "type": "capacitor",
     "capacitance": 0.1,
     "v_oper_max": 5.5,
-    "r_charge": 510
   }
 }
 ```
@@ -128,8 +126,9 @@ The configuration parameters are:
 | **type** | `string` | Type of load, value is `"resistor"`. |
 | **resistance** | `float` | Resistance value (in Ohms). |
 | **p_rating** | `float` | Resistor power rating (in Watts). |
+| **v_max** | `float` | Maximum working voltage (in Voltz). |
 
-For example, if considering an actual resistor [CF14JT1K60 1.6kOhms](https://www.digikey.com.br/en/products/detail/stackpole-electronics-inc/CF14JT1K60/1741251), we have the following:
+For example, if considering an actual resistor [CF14JT1K60 1.6kOhms](https://www.digikey.com.br/en/products/detail/stackpole-electronics-inc/CF14JT1K60/1741251), the configuration is:
 
 ```json
 {
@@ -137,11 +136,12 @@ For example, if considering an actual resistor [CF14JT1K60 1.6kOhms](https://www
     "type": "resistor",
     "resistance": 1600,
     "p_rating": 0.25,
+    "v_max": 250,
   }
 }
 ```
 
-It represents a load that consumes a constant amount of energy over time.
+The `Resistor` class represents a load that consumes a constant amount of energy over each simulation step: `E(t) = (V^2/R) / t_step`.
 
 #### 2.3.2. MCU (Generic)
 
@@ -153,97 +153,84 @@ The configuration parameters are:
 |---|---|---|
 | **type** | `string` | Type of supply, value is `"mcu"`. |
 | **v_min** | `float` | Minimum operating voltage. |
-| **v_wake_up** | `float` | Minimum voltage necessary to wake-up the MCU from `"shutdown"`. |
-| **v_oper_low** | `float` | Nominal operating voltage for `"low_power"` mode. |
-| **v_oper_active** | `float` | Nominal operating voltage for `"active"` mode. |
 | **v_max** | `float` | Maximum operating voltage. |
-| **modes** | `dict` | List of CPU operating modes and their energy cost (in A). |
+| **modes** | `dict` | List of CPU operating modes, their energy cost (in A), clock frequency (in MHz) and operating voltage (in V). |
 | **program** | `string` | Path to the script file that represents software being executed by the MCU. |
 
-For example, considering a [TI MSP430FR5994](https://www.ti.com/lit/ds/slase54d/slase54d.pdf?ts=1781671720297) MCU, with a 4Mhz clock and [configurable power modes](https://www.ti.com/lit/ug/tiduc02/tiduc02.pdf?ts=1781611206249), we have:
+For example, if considering an actual MCU [Texas Instruments MSP430FR5994](https://www.ti.com/lit/ds/slase54d/slase54d.pdf?ts=1781671720297).
+
+We have the following operating modes:
+
+- **active** - Active mode; CPU is on; maximum current consumption; all features are available; executes any programmed software.
+- **standby** - Low-power mode; CPU is sleeping; current consumption is low; many features still available (wake-up/interrupt events, data retention and some peripherals).
+- **shutdown** - Shutdown mode; CPU is off; minimal current consumption; only supply voltage supervisor is available.
+
+By assuming the following information from the **MSP430FR5994** datasheet:
+
+- Operating temperature is 25ºC;
+- Chosen standby mode is LPM2 (includes supply voltage supervisor and interrupt capabilities);
+- Chosen shutdown mode is LPM4.5 (includes supply voltage supervisor); 
+- Clock is running at 16MHz on active mode with FRAM on.
+
+The `MCU` configuration is:
 
 ```json
 {
   "load": {
     "type": "mcu",
     "v_min": 1.8,
-    "v_wake_up": 2,
-    "v_oper_low": 2.2,
-    "v_oper_active": 3.0,
     "v_max": 3.6,
     "modes": {
-      "shutdown": 0,
-      "low_power": 0.000092,
-      "active": 0.00048
-    },
-    "program": "src/input/files/program01.script"
+      "shutdown": { "cost": 0.0000003, "clock": 0.0, "v_oper": 2.0 },
+      "standby": { "cost": 0.000001, "clock": 0.05, "v_oper": 2.2 },
+      "active": { "cost": 0.001920, "clock": 16, "v_oper": 3.0 }
+    }
   }
 }
 ```
 
-The `MCU` class represents a load that collects, processes and transmits data. The simulator considers two types of operations to calculate the consumed energy: CPU and tasks. For CPU, consumption depends on the current power mode and the configured clock frequency. For tasks, the simulator provides a default list of actions, each with their own estimated power consumption.
+The `MCU` class represents a load that collects, processes and transmits data. The energy comsumption is modelled after two types of operations: tasks and CPU power state. The next section describes the available operations and their cost in detail.
 
-```json
-{
-  "actions": [
-    {
-      "action": "sleeping",
-      "instruction": "SLEEP",
-      "cost": 0.00012
-    },
-    {
-      "action": "sensing",
-      "instruction": "SENSE",
-      "cost": 0.006
-    },
-    {
-      "action": "transmitting",
-      "instruction": "TX_ON",
-      "cost": 0.03
-    },
-    {
-      "action": "receiving",
-      "instruction": "RX_ON",
-      "cost": 0.027
-    },
-    {
-      "action": "processing",
-      "instruction": "CPU_PROC",
-      "cost": 0
-    }
-  ]
-}
-```
+# 3. Software Operations
 
-For the processing task (CPU_PROC), when the default cost in `"actions"` is zero, the simulator will use the CPU's operating mode's estimated cost (defined in **modes**)
+When considering a Load of the `MCU` class, the simulation allows the user to define a program sequence (i.e. list of operations) that will be executed by this class, emulating real software applications.
 
-Lastly, the user MUST include at least ONE new script file that contains the program sequence (i.e. list of tasks) that will be executed by the MCU (**program** file). This script file will represent the CPU and task operations over the simulation window, emulating real software.
+The list of default available operations are:
 
-Each line of the script must be an instruction, followed by the time it took in milliseconds. For example:
+| Type | Name | Code Instruction | Description | Cost (A)
+|---|---|---|---|---|---|
+| CPU | cpu_standby | `STANDBY` | CPU is in low-power mode | Depends on `MCU` **modes** |
+| CPU | cpu_processing | `ACTIVE` | CPU is in active power mode | Depends on `MCU` **modes** |
+| Task | loop_start | `LOOP` | Indicates a loop start | 0 |
+| Task | loop_end | `END` | Indicates a loop end | 0 |
+| Task | sensing | `SENSE` | Reading sensor data | 0.006 |
+| Task | transmitting | `TX` | Transmitting communication data | 0.03 |
+| Task | receiving | `RX` | Receiving communication data | 0.027 |
+
+> The sensing, transmitting and receiving tasks are based on the work done by [Climent et al](https://onlinelibrary.wiley.com/doi/full/10.1002/cpe.3151).
+
+The user MUST include a script file that defines the program sequence they wish to execute. Each line of the script must be an instruction followed by its execution time in seconds.
+
+For example:
 
 ```txt
 LOOP
-  SLEEP 1000
-  SENSE 2500
-  CPU_PROC 100
-  TX_ON 5000
+  STANDBY 3
+  SENSE 0.05
+  ACTIVE 0.000070
+  TX_ON 0.25
 END
 ```
 
-Consider a simulation step of 250ms and an MCU class based on the MSP with the CPU on `"active"` mode and with clock of 4MHz, and a operating voltage of 3.0V. The program script above translates to the following energy consumption behaviour.
+The path to this script file is included on the configuration file as well:
 
-| # | Instruction | Duration (s) | Cost (A) | Charge (C) | Energy (J) |
-|---|---|---|---|---|---|
-| 0 | `SLEEP` | 1.0 = 4 steps | 0.00012 | 0.00012 | 0.00036 |
-| 1 | `SENSE` | 2.5 = 10 steps | 0.006 | 0.015 |0.045 |
-| 2 | `CPU_PROC` | 0.1 = 0.4 step | 0.00048 | 0.000048 | 0.000144 |
-| 3 | `TX_ON` | 5.0 = 20 steps | 0.03 | 0.15 | 0.45 |
+```json
+{
+  "program_file": "src/input/files/program01.txt"
+}
+```
 
-The total charge of each instruction is given by `Cost I(A) * Duration dt(s)` and the energy consumed is `Charge(C) * Voltage(V)`.
-
-Over a simulation period of 35 steps (or 8.75s), the total energy consumed was 0.495504J.
-
-## 3. Full Example Configuration File
+## 4. Example of Complete Configuration File
 
 ```json
 {
@@ -253,54 +240,23 @@ Over a simulation period of 35 steps (or 8.75s), the total energy consumed was 0
   },
   "supply":{
     "type": "constant",
-    "v_base": 8.0
+    "p_base": 0.05
   },
   "storage": {
     "type": "capacitor",
     "capacitance": 0.1,
-    "v_oper_max": 5.5,
-    "r_charge": 510
+    "v_oper_max": 5.5
   },
   "load": {
     "type": "mcu",
     "v_min": 1.8,
-    "v_wake_up": 2,
-    "v_oper_low": 2.2,
-    "v_oper_active": 3.0,
     "v_max": 3.6,
     "modes": {
-      "shutdown": 0,
-      "low_power": 0.000092,
-      "active": 0.00048
-    },
-    "program": "src/input/files/program01.script"
-  },
-  "actions": [
-    {
-      "action": "sleeping",
-      "instruction": "SLEEP",
-      "cost": 0.00012
-    },
-    {
-      "action": "sensing",
-      "instruction": "SENSE",
-      "cost": 0.006
-    },
-    {
-      "action": "transmitting",
-      "instruction": "TX_ON",
-      "cost": 0.03
-    },
-    {
-      "action": "receiving",
-      "instruction": "RX_ON",
-      "cost": 0.027
-    },
-    {
-      "action": "processing",
-      "instruction": "CPU_PROC",
-      "cost": 0
+      "shutdown": { "cost": 0.0000003, "clock": 0.0, "v_oper": 2.0 },
+      "standby": { "cost": 0.000001, "clock": 0.05, "v_oper": 2.2 },
+      "active": { "cost": 0.001920, "clock": 16, "v_oper": 3.0 }
     }
-  ]
+  },
+  "program_file": "src/input/files/program01.txt"
 }
 ```

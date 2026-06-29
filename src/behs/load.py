@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import math
 
-from LoadSimulator import config
+from src.program.program import Program
 
 
 # Class Load for the BEHS simulation model
@@ -10,11 +10,12 @@ class Load(ABC):
     @abstractmethod
     def __init__(self):
         self.type: str
-        self.v_on: float  # voltage threshold for load to wake-up
-        self.voltage: float  # voltage across the load, in Voltz
-        self.current: float  # current flowing through the load, in Amperes
-        self.energy_consumed: float  # energy consumed by the load, in Joules
-        self.total_energy_consumed: float  # cumulative energy consumed, in Joules
+        self.v_on: float  # voltage threshold (V) for load to wake-up
+        self.voltage: float  # voltage (V) across the load
+        self.current: float  # current (A) flowing through the load
+        self.energy_consumed: float  # energy consumed (J) by the load
+        self.total_energy_consumed: float  # cumulative energy consumed (J)
+        self.program: Program  # software executed by load (if applicable)
 
     # Param 'v_supply' is the current voltage supplied by the energy storage
 
@@ -25,20 +26,25 @@ class Load(ABC):
 
     # Calculates the current flowing through the load based on 'v_supply'
     @abstractmethod
-    def calculate_current(self, v_supply: float) -> float:
+    def calculate_current(self, v_supply: float, t_step: float) -> float:
         pass
 
     # Calculates the energy consumed by the load based on 'v_supply'
     @abstractmethod
-    def calculate_energy_consumed(self, v_supply: float) -> float:
+    def calculate_energy_consumed(self, v_supply: float, t_step: float) -> float:
         pass
 
-    # Refreshes the load's state based on 'v_supply'
+    # Load Program from the configuration
     @abstractmethod
-    def refresh(self, v_supply: float) -> None:
+    def upload_software(self, program: Program) -> None:
+        self.program = program
+
+    # Refreshes the load's state based on 'v_supply' at each time step
+    @abstractmethod
+    def refresh(self, v_supply: float, t_step: float) -> None:
         self.voltage = self.calculate_voltage(v_supply)
-        self.current = self.calculate_current(v_supply)
-        self.energy_consumed = self.calculate_energy_consumed(v_supply)
+        self.current = self.calculate_current(v_supply, t_step)
+        self.energy_consumed = self.calculate_energy_consumed(v_supply, t_step)
         self.total_energy_consumed += self.energy_consumed
 
     # Prints the load's state at a given time index
@@ -59,40 +65,46 @@ class Load(ABC):
 # Class Resistor for the BEHS simulation model, inheriting from Load Class
 # It represents a resistor, consuming energy based on its resistance
 class Resistor(Load):
-    def __init__(self, config, t_step):
+    def __init__(self, config):
+        # Class specific attributes
         self.RESISTANCE = config.get("resistance")
         self.P_RATING = config.get("p_rating")
-        self.V_MAX = math.sqrt(self.P_RATING * self.RESISTANCE)
         self.V_OPER = 1.8
-        self.T_STEP = t_step
+        self.V_MAX = min(
+            math.sqrt(self.P_RATING * self.RESISTANCE), config.get("v_max"))
 
+        # Inherited attributes
         self.type = config.get("type")
         self.v_on = min(self.V_OPER, self.V_MAX)
         self.voltage = 0.0
         self.current = 0.0
         self.energy_consumed = 0.0
         self.total_energy_consumed = 0.0
+        self.program = None
 
-    def calculate_current(self, v_supply):
-        if v_supply >= self.v_on:
-            return v_supply / self.RESISTANCE
-        return 0.0
-
+    # If supply voltage exceeds V_MAX, we assume the Load stays at V_MAX
+    # We assume there is a voltage regulator between the EnergyStorage and Load
     def calculate_voltage(self, v_supply):
+        if v_supply < self.v_on:
+            return 0.0
+        return min(v_supply, self.V_MAX)
+
+    def calculate_current(self, v_supply, t_step):
         if v_supply >= self.v_on:
-            return v_supply
+            return min(v_supply, self.V_MAX) / self.RESISTANCE
         return 0.0
 
-    def calculate_energy_consumed(self, v_supply):
+    def calculate_energy_consumed(self, v_supply, t_step):
         if v_supply >= self.v_on:
-            return self.P_RATING * self.T_STEP
+            v = min(v_supply, self.V_MAX)
+            return (v ** 2 / self.RESISTANCE) * t_step
         return 0.0
 
-    def refresh(self, v_supply):
-        if v_supply > self.V_MAX:
-            raise ValueError(
-                f"Supply voltage {v_supply:.5f}V exceeds the resistor's power rating {self.V_MAX:.5f}V!")
-        super().refresh(v_supply)
+    def upload_software(self, program):
+        super().upload_software(program)
+
+    def refresh(self, v_supply, t_step):
+        super().refresh(v_supply, t_step)
 
     def print(self, t_index, file):
         super().print(t_index, file)
@@ -101,52 +113,77 @@ class Resistor(Load):
 # Class MCU for the BEHS simulation model, inheriting from Load Class
 # It represents a microcontroller unit (MCU), consuming energy based on its specs
 class MCU(Load):
-    def __init__(self, config, t_step):
-        self.V_MIN = config.get("v_min")
-        self.V_WAKE_UP = config.get("v_wake_up")
-        self.V_OPER_LOW = config.get("v_oper_low")
-        self.V_OPER_ACTIVE = config.get("v_oper_active")
-        self.V_MAX = config.get("v_max")
-        self.MODES = config.get("modes")
-        self.PROGRAM_FILE = config.get("program")
-        self.T_STEP = t_step
+    def __init__(self, config):
+        modes = config.get("modes")
 
+        # Class specific attributes
+        self.ACTIVE_MODE = modes.get("active")
+        self.STANDBY_MODE = modes.get("standby")
+        self.SHUTDOWN_MODE = modes.get("shutdown")
+        self.V_MIN = config.get("v_min")
+        self.V_MAX = config.get("v_max")
+        self.V_OPER_SHUTDOWN = self.SHUTDOWN_MODE.get("v_oper")
+        self.V_OPER_STANDBY = self.STANDBY_MODE.get("v_oper")
+        self.V_OPER_ACTIVE = self.ACTIVE_MODE.get("v_oper")
+        self.mode = "off"
+
+        # Inherited attributes
         self.type = config.get("type")
-        self.v_on = self.V_WAKE_UP
-        self.mode = "shutdown"  # "shutdown", "low_power", "active"
+        self.v_on = self.V_MIN
         self.voltage = 0.0
         self.current = 0.0
         self.energy_consumed = 0.0
         self.total_energy_consumed = 0.0
+        self.program = None
 
-    def calculate_current(self, v_supply):
-        if self.mode == "active":
-            return self.MODES.get("active")
-        elif self.mode == "low_power":
-            return self.MODES.get("low_power")
-        else:
-            return self.MODES.get("shutdown", 0.0)
-
+    # If supply voltage exceeds V_MAX, we assume the Load stays at V_MAX
+    # We assume there is a voltage regulator between the EnergyStorage and Load
     def calculate_voltage(self, v_supply):
-        return v_supply if v_supply >= self.V_MIN else 0.0
+        if v_supply < self.V_MIN:
+            return 0.0
+        return min(v_supply, self.V_MAX)
 
-    def calculate_energy_consumed(self, v_supply):
-        return self.calculate_voltage(v_supply) * self.calculate_current(v_supply) * self.T_STEP
+    def calculate_current(self, v_supply, t_step):
+        # We only execute the program if the MCU is in active mode
+        if self.mode == "active":
+            active_cost = self.ACTIVE_MODE.get("cost")
+            if self.program is not None:
+                op = self.program.get_executing_operation()
+                if op is not None:
+                    return active_cost + op.get_cost_for_t_step(t_step)
+            return active_cost
+        elif self.mode == "standby":
+            return self.STANDBY_MODE.get("cost")
+        elif self.mode == "shutdown":
+            return self.SHUTDOWN_MODE.get("cost")
+        else:
+            return 0.0
 
-    def refresh(self, v_supply):
-        if v_supply > self.V_MAX:
+    def calculate_energy_consumed(self, v_supply, t_step):
+        return self.voltage * self.current * t_step
+
+    def upload_software(self, program):
+        super().upload_software(program)
+
+    def refresh(self, v_supply, t_step):
+        # Update mode before calculating energy so costs reflect current state
+        if v_supply < self.V_MIN:
+            self.mode = "off"
+        elif self.V_MIN <= v_supply < self.V_OPER_SHUTDOWN:
+            self.mode = "idle"
+        elif self.V_OPER_SHUTDOWN <= v_supply < self.V_OPER_STANDBY:
             self.mode = "shutdown"
-            raise ValueError(
-                f"Supply voltage {v_supply:.5f}V exceeds the MCU's max voltage {self.V_MAX:.5f}V!")
-
-        if v_supply < self.V_OPER_LOW:
-            self.mode = "shutdown"
-        elif v_supply >= self.V_OPER_LOW and v_supply < self.V_OPER_ACTIVE:
-            self.mode = "low_power"
+        elif self.V_OPER_STANDBY <= v_supply < self.V_OPER_ACTIVE:
+            self.mode = "standby"
         elif v_supply >= self.V_OPER_ACTIVE:
             self.mode = "active"
 
-        super().refresh(v_supply)
+        # Update Load state
+        super().refresh(v_supply, t_step)
+
+        # Advance program counter after energy is calculated for time step
+        if self.mode == "active" and self.program is not None:
+            self.program.t_steps_completed += 1
 
     def print(self, t_index, file):
         super().print(t_index, file)

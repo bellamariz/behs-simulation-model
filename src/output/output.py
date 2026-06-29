@@ -10,11 +10,11 @@ def write_to_log(sim_output):
         for t, data in sim_output.items():
             print(f"Time step {t}: t={t:.3f}s\n", file=logfile)
             print(
-                f"  Supply: type={data['supply']['type']}, voltage={data['supply']['voltage']:.5f}V", file=logfile)
+                f"  Supply: type={data['supply']['type']}, energy={data['supply']['energy_supply']:.5f}J, power={data['supply']['power_supply']:.5f}W", file=logfile)
             print(
-                f"  Storage: type={data['storage']['type']}, status={data['storage']['status']}, voltage={data['storage']['voltage']:.5f}V, current={data['storage']['current']:.5f}A, energy_stored={data['storage']['energy_stored']:.5f}J", file=logfile)
+                f"  Load: type={data['load']['type']}, status={data['load']['mode']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.7f}A, energy={data['load']['energy_consumed']:.7f}J, total_energy_consumed={data['load']['total_energy_consumed']:.7f}J", file=logfile)
             print(
-                f"  Load: type={data['load']['type']}, status={data['load']['mode']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.5f}A, energy_consumed={data['load']['energy_consumed']:.5f}J, total_energy_consumed={data['load']['total_energy_consumed']:.5f}J\n", file=logfile)
+                f"  Storage: type={data['storage']['type']}, status={data['storage']['status']}, voltage={data['storage']['voltage']:.5f}V, current={data['storage']['current']:.7f}A, energy={data['storage']['energy_stored']:.7f}J, power={data['storage']['power_stored']:.7f}W\n", file=logfile)
             print("-" * 50, file=logfile)
 
 
@@ -22,7 +22,7 @@ def write_to_log(sim_output):
 def write_to_csv(sim_output):
     with open("output.csv", "w", newline="", encoding="utf-8") as csvfile:
         fieldnames = ["step", "time", "component", "status", "voltage", "current",
-                      "energy_stored", "energy_consumed", "total_energy_consumed"]
+                      "energy", "power", "total_energy_consumed"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
@@ -32,10 +32,10 @@ def write_to_csv(sim_output):
                 "time": t,
                 "component": "supply",
                 "status": "NaN",
-                "voltage": data['supply']['voltage'],
+                "voltage": "NaN",
                 "current": "NaN",
-                "energy_stored": "NaN",
-                "energy_consumed": "NaN",
+                "power": data['supply']['power_supply'],
+                "energy": data['supply']['energy_supply'],
                 "total_energy_consumed": "NaN",
             })
             writer.writerow({
@@ -45,8 +45,8 @@ def write_to_csv(sim_output):
                 "status": data['storage']['status'],
                 "voltage": data['storage']['voltage'],
                 "current": data['storage']['current'],
-                "energy_stored": data['storage']['energy_stored'],
-                "energy_consumed": "NaN",
+                "power": data['storage']['power_stored'],
+                "energy": data['storage']['energy_stored'],
                 "total_energy_consumed": "NaN",
             })
             writer.writerow({
@@ -56,8 +56,8 @@ def write_to_csv(sim_output):
                 "status": data['load']['mode'],
                 "voltage": data['load']['voltage'],
                 "current": data['load']['current'],
-                "energy_stored": "NaN",
-                "energy_consumed": data['load']['energy_consumed'],
+                "power": "NaN",
+                "energy": data['load']['energy_consumed'],
                 "total_energy_consumed": data['load']['total_energy_consumed']
             })
 
@@ -86,7 +86,7 @@ def plot():
 
     # Plot all attributes for a component, in separate subplots, but same window
     plot_all_attributes_for_component(
-        df, components[1], [["voltage", "V"], ["current", "A"], ["energy_stored", "J"]])
+        df, components[1], [["voltage", "V"], ["current", "A"], ["energy", "J"]])
     plt.show()
 
     plot_all_attributes_for_component(
