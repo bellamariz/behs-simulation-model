@@ -69,7 +69,7 @@ def main():
     # Uncomment the line below to run the simulation with a manual configuration
     run_manual()
 
-    # TODO: Update interface to consider new simulation parameters
+    # TODO: Update interface to consider new simulation UI
     # Uncomment the line below to run the simulation with a UI for input configuration
     # run_ui()
 

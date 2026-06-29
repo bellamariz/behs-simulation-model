@@ -53,71 +53,9 @@ def load_config_from_file(filepath: str) -> dict:
 
 
 # Load simulation configuration from UI input values
-# TODO: Update func considering the new config.json
+# TODO: Update function for latest model changes
 def load_config_from_ui(values):
-    # Parses input for Energy Storage
-    storage_type = values["storage_type"]
-    storage_cfg = {"type": storage_type}
-    if storage_type == "capacitor":
-        storage_cfg["capacitance"] = float(values["storage_capacitance"])
-        storage_cfg["v_oper_max"] = float(values["storage_v_oper_max"])
-
-    # Parses input for Energy Supply
-    supply_type = values["supply_type"]
-    supply_cfg = {"type": supply_type}
-    if supply_type == "constant":
-        supply_cfg["p_base"] = float(values["supply_p_base"])
-    elif supply_type == "harvesting":
-        supply_cfg["filename"] = values["supply_filename"]
-        supply_cfg["sampling_period"] = float(values["supply_sampling_period"])
-
-    # Parses input for Load
-    load_type = values["load_type"]
-    load_cfg = {"type": load_type}
-    actions_cfg = []
-    if load_type == "resistor":
-        load_cfg["resistance"] = float(values["load_resistance"])
-        load_cfg["p_rating"] = float(values["load_p_rating"])
-        load_cfg["v_max"] = float(values["load_v_max"])
-    elif load_type == "mcu":
-        load_cfg["v_min"] = float(values["load_v_min"])
-        load_cfg["v_wake_up"] = float(values["load_v_wake_up"])
-        load_cfg["v_oper_low"] = float(values["load_v_oper_low"])
-        load_cfg["v_oper_active"] = float(values["load_v_oper_active"])
-        load_cfg["v_max"] = float(values["load_v_max"])
-        load_cfg["modes"] = {
-            "shutdown": float(values["load_mode_shutdown"]),
-            "low_power": float(values["load_mode_low_power"]),
-            "active": float(values["load_mode_active"]),
-        }
-        load_cfg["program"] = values["load_program"]
-
-        # Parses input for Actions (if Load is MCU)
-        actions_cfg = [
-            {"action": "sleeping", "instruction": values["action_sleep_instr"], "cost": float(
-                values["action_sleep_cost"])},
-            {"action": "sensing", "instruction": values["action_sense_instr"], "cost": float(
-                values["action_sense_cost"])},
-            {"action": "transmitting", "instruction": values["action_tx_instr"], "cost": float(
-                values["action_tx_cost"])},
-            {"action": "receiving", "instruction": values["action_rx_instr"], "cost": float(
-                values["action_rx_cost"])},
-            {"action": "processing", "instruction": values["action_proc_instr"], "cost": float(
-                values["action_proc_cost"])},
-        ]
-
-    config = {
-        "simulation": {
-            "duration": float(values["sim_duration"]),
-            "step": float(values["sim_step"]),
-        },
-        "supply": supply_cfg,
-        "storage": storage_cfg,
-        "load": load_cfg,
-        "actions": actions_cfg
-    }
-
-    return config
+    pass
 
 
 # The Input class configures all the simulation parameters
