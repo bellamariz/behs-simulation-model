@@ -23,13 +23,13 @@ def run_manual():
     out.write_to_log(sim_output)
 
     # Write output to local CSV file, 'output.csv'
-    # out.write_to_csv(sim_output)
+    out.write_to_csv(sim_output)
 
     # Formats CSV and writes output to local Excel file, 'output.xlsx'
-    # out.write_to_excel()
+    out.write_to_excel()
 
     # Reads Excel file and plots the output
-    # out.plot()
+    out.plot()
 
 
 def run_ui():
