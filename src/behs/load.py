@@ -146,18 +146,23 @@ class MCU(Load):
         return min(v_supply, self.V_MAX)
 
     def calculate_current(self, v_supply, t_step):
+        active_cost = self.ACTIVE_MODE.get("cost")
+        standby_cost = self.STANDBY_MODE.get("cost")
+        shutdown_cost = self.SHUTDOWN_MODE.get("cost")
+
         # We only execute the program if the MCU is in active mode
         if self.mode == "active":
-            active_cost = self.ACTIVE_MODE.get("cost")
             if self.program is not None:
                 op = self.program.get_executing_operation()
                 if op is not None:
+                    if op.instruction == "STANDBY":
+                        return standby_cost
                     return active_cost + op.get_cost_for_t_step(t_step)
             return active_cost
         elif self.mode == "standby":
-            return self.STANDBY_MODE.get("cost")
+            return standby_cost
         elif self.mode == "shutdown":
-            return self.SHUTDOWN_MODE.get("cost")
+            return shutdown_cost
         else:
             return 0.0
 
