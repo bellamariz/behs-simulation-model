@@ -6,7 +6,7 @@ import src.behs.pmic as pmic
 from src.eh import eh
 import src.program.program as program
 
-CONFIG_FILE_PATH = "src/input/files/config.json"
+CONFIG_FILE_PATH = "src/input/files/config-complete-pmic.json"
 
 _SUPPLY_REGISTRY = {
     "constant": supply.ConstantSupply,

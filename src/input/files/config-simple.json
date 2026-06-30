@@ -1,0 +1,21 @@
+{
+  "simulation": {
+    "duration": 60,
+    "step": 0.1
+  },
+  "supply":{
+    "type": "constant",
+    "p_base": 0.005
+  },
+  "storage": {
+    "type": "capacitor",
+    "capacitance": 0.047,
+    "v_oper_max": 5.5
+  },
+  "load": {
+    "type": "resistor",
+    "resistance": 1600,
+    "p_rating": 0.25,
+    "v_max": 250
+  }
+}

@@ -1,6 +1,6 @@
 # Simulation Input Configuration File
 
-This document describes how to prepare the configuration file [config.json](/src/input/files/config.json) that will be loaded into the simulator.
+This document describes how to prepare a configuration JSON file (`/src/input/files/config-*.json`) that will be loaded into the simulator.
 
 ## 1. Simulation Parameters
 
@@ -139,15 +139,15 @@ The configuration parameters are:
 | **p_rating** | `float` | Resistor power rating (in Watts). |
 | **v_max** | `float` | Maximum working voltage (in Voltz). |
 
-For example, if considering an actual resistor [CF14JT1K60 1.6kOhms](https://www.digikey.com.br/en/products/detail/stackpole-electronics-inc/CF14JT1K60/1741251), the configuration is:
+For example, if considering an actual resistor [CF14JT10K0 10kOhms](hhttps://www.digikey.com/en/products/detail/stackpole-electronics-inc/CF14JT10K0/1741265), the configuration is:
 
 ```json
 {
   "load": {
     "type": "resistor",
-    "resistance": 1600,
-    "p_rating": 0.25,
-    "v_max": 250,
+    "resistance": 10000,
+    "p_rating": 0.5,
+    "v_max": 350,
   }
 }
 ```

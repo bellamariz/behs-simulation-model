@@ -1,0 +1,27 @@
+{
+  "simulation": {
+    "duration": 1200,
+    "step": 0.5
+  },
+  "supply":{
+    "type": "harvesting",
+    "sampling_period": 0.5,
+    "profile_filepath": "src/eh/files/dataset-teg.csv"
+  },
+  "storage": {
+    "type": "capacitor",
+    "capacitance": 0.047,
+    "v_oper_max": 5.5
+  },
+  "load": {
+    "type": "mcu",
+    "v_min": 1.8,
+    "v_max": 3.6,
+    "modes": {
+      "shutdown": { "cost": 0.0000003, "clock": 0.0, "v_oper": 2.0 },
+      "standby": { "cost": 0.000001, "clock": 0.05, "v_oper": 2.2 },
+      "active": { "cost": 0.001920, "clock": 16, "v_oper": 3.0 }
+    }
+  },
+  "program_filepath": "src/program/files/program01.txt"
+}
