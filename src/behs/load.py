@@ -10,6 +10,7 @@ class Load(ABC):
     @abstractmethod
     def __init__(self):
         self.type: str
+        self.mode: str  # operational mode (e.g., active, standby, shutdown)
         self.v_on: float  # voltage threshold (V) for load to wake-up
         self.voltage: float  # voltage (V) across the load
         self.current: float  # current (A) flowing through the load
@@ -75,6 +76,7 @@ class Resistor(Load):
 
         # Inherited attributes
         self.type = config.get("type")
+        self.mode = "on"
         self.v_on = min(self.V_OPER, self.V_MAX)
         self.voltage = 0.0
         self.current = 0.0
@@ -125,10 +127,10 @@ class MCU(Load):
         self.V_OPER_SHUTDOWN = self.SHUTDOWN_MODE.get("v_oper")
         self.V_OPER_STANDBY = self.STANDBY_MODE.get("v_oper")
         self.V_OPER_ACTIVE = self.ACTIVE_MODE.get("v_oper")
-        self.mode = "off"
 
         # Inherited attributes
         self.type = config.get("type")
+        self.mode = "off"
         self.v_on = self.V_MIN
         self.voltage = 0.0
         self.current = 0.0
