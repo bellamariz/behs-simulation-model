@@ -90,19 +90,25 @@ class BoostBuckPMIC(PMIC):
             self.BUCK_EFFICIENCY = config.get("buck_efficiency")
             self.COLD_START_EFFICIENCY = config.get("cold_start_efficiency")
 
-    # Updates the VBAT_OK flag.
-    # - It stays True if v_storage >= V_BAT_OK_LOW.
-    # - It stays False if v_storage >= V_BAT_OK_HIGH.
+    # Updates the VBAT_OK flag, which is used to turn on the buck converter (enable v_on to Load).
+    # - It goes False --> True when v_storage >= V_BAT_OK_HIGH.
+    # - It stays True while v_storage >= V_BAT_OK_LOW.
+    # - It goes True --> False when v_storage < V_BAT_OK_LOW.
     def update_vbat_ok_signal(self, v_storage):
         if self.vbat_ok:
             return v_storage >= self.V_BAT_OK_LOW
         else:
             return v_storage >= self.V_BAT_OK_HIGH
 
-    # Buck converter output is enabled only when storage is above the V_BAT_UV threshold.
+    # Calculates the output voltage delivered to the load.
+    # - Disabled: v_out = 0.0V when vbat_ok is False or v_storage <= V_BAT_UV.
+    # - Pass-through (100% duty cycle): v_out = v_storage, when V_BAT_UV < v_storage < V_OUT_REG.
+    # - Regulated: v_out = V_OUT_REG, when v_storage >= V_OUT_REG.
     def calculate_v_out(self, v_storage):
-        if v_storage < self.V_BAT_UV:
+        if not self.vbat_ok or v_storage <= self.V_BAT_UV:
             return 0.0
+        if v_storage < self.V_OUT_REG:
+            return v_storage
         return self.V_OUT_REG
 
     # Energy charged into storage by supply per time step:
@@ -117,8 +123,9 @@ class BoostBuckPMIC(PMIC):
 
     # Energy consumed from storage by load on each time step:
     #   e_from_storage = e_load / n_buck
+    # Buck is disabled when vbat_ok is False or v_storage <= V_BAT_UV.
     def calculate_energy_consumed_from_storage(self, e_load, v_storage):
-        if e_load <= 0.0 or v_storage < self.V_BAT_UV:
+        if e_load <= 0.0 or not self.vbat_ok or v_storage <= self.V_BAT_UV:
             return 0.0
         return e_load / self.BUCK_EFFICIENCY
 
