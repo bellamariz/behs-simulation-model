@@ -10,7 +10,7 @@
   },
   "storage": {
     "type": "capacitor",
-    "capacitance": 0.047,
+    "capacitance": 0.1,
     "v_oper_max": 5.5
   },
   "load": {

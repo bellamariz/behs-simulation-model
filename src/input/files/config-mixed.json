@@ -1,7 +1,7 @@
 {
   "simulation": {
-    "duration": 240,
-    "step": 0.2
+    "duration": 2400,
+    "step": 0.25
   },
   "supply":{
     "type": "constant",
