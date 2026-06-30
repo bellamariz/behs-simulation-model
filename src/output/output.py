@@ -10,7 +10,7 @@ def write_to_log(sim_output):
         for t, data in sim_output.items():
             print(f"Time step {t}: t={t:.3f}s\n", file=logfile)
             print(
-                f"  Supply: type={data['supply']['type']}, energy={data['supply']['energy_supply']:.5f}J, power={data['supply']['power_supply']:.5f}W", file=logfile)
+                f"  Supply: type={data['supply']['type']}, energy={data['supply']['energy_supply']:.7f}J, power={data['supply']['power_supply']:.7f}W", file=logfile)
             print(
                 f"  Load: type={data['load']['type']}, status={data['load']['mode']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.7f}A, energy={data['load']['energy_consumed']:.7f}J, total_energy_consumed={data['load']['total_energy_consumed']:.7f}J", file=logfile)
             if 'pmic' in data:
