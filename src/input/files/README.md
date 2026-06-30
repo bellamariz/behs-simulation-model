@@ -243,7 +243,7 @@ The path to this script file is included on the configuration file as well:
 }
 ```
 
-## 4. (Optional) PMIC: Power Management Integrated Circuit
+## 4. PMIC: Power Management Integrated Circuit
 
 An `PMIC` component can be configured between the **Supply**, **Storage** and **Load**, to control the energy flow of the system more appropriately.
 
