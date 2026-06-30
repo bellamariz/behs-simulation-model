@@ -101,7 +101,7 @@ def plot():
     plt.show()
 
     plot_all_attributes_for_component(
-        df, components[2], [["voltage", "V"], ["total_energy_consumed", "J"]])
+        df, components[2], [["voltage", "V"], ["energy", "J"], ["total_energy_consumed", "J"]])
     plt.show()
 
 

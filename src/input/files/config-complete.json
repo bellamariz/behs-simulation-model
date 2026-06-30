@@ -1,6 +1,6 @@
 {
   "simulation": {
-    "duration": 1200,
+    "duration": 18000,
     "step": 0.5
   },
   "supply":{
