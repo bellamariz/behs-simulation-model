@@ -10,6 +10,7 @@ class Load(ABC):
     @abstractmethod
     def __init__(self):
         self.type: str
+        self.mode: str  # operational mode (e.g., active, standby, shutdown)
         self.v_on: float  # voltage threshold (V) for load to wake-up
         self.voltage: float  # voltage (V) across the load
         self.current: float  # current (A) flowing through the load
@@ -63,7 +64,7 @@ class Load(ABC):
 
 
 # Class Resistor for the BEHS simulation model, inheriting from Load Class
-# It represents a resistor, consuming energy based on its resistance
+# It represents a resistor, a Load that consumes constant energy
 class Resistor(Load):
     def __init__(self, config):
         # Class specific attributes
@@ -75,6 +76,7 @@ class Resistor(Load):
 
         # Inherited attributes
         self.type = config.get("type")
+        self.mode = "on"
         self.v_on = min(self.V_OPER, self.V_MAX)
         self.voltage = 0.0
         self.current = 0.0
@@ -111,7 +113,7 @@ class Resistor(Load):
 
 
 # Class MCU for the BEHS simulation model, inheriting from Load Class
-# It represents a microcontroller unit (MCU), consuming energy based on its specs
+# It represents a microcontroller unit (MCU), a Load that consumes variable energy.
 class MCU(Load):
     def __init__(self, config):
         modes = config.get("modes")
@@ -125,10 +127,10 @@ class MCU(Load):
         self.V_OPER_SHUTDOWN = self.SHUTDOWN_MODE.get("v_oper")
         self.V_OPER_STANDBY = self.STANDBY_MODE.get("v_oper")
         self.V_OPER_ACTIVE = self.ACTIVE_MODE.get("v_oper")
-        self.mode = "off"
 
         # Inherited attributes
         self.type = config.get("type")
+        self.mode = "off"
         self.v_on = self.V_MIN
         self.voltage = 0.0
         self.current = 0.0
@@ -144,18 +146,23 @@ class MCU(Load):
         return min(v_supply, self.V_MAX)
 
     def calculate_current(self, v_supply, t_step):
+        active_cost = self.ACTIVE_MODE.get("cost")
+        standby_cost = self.STANDBY_MODE.get("cost")
+        shutdown_cost = self.SHUTDOWN_MODE.get("cost")
+
         # We only execute the program if the MCU is in active mode
         if self.mode == "active":
-            active_cost = self.ACTIVE_MODE.get("cost")
             if self.program is not None:
                 op = self.program.get_executing_operation()
                 if op is not None:
+                    if op.instruction == "STANDBY":
+                        return standby_cost
                     return active_cost + op.get_cost_for_t_step(t_step)
             return active_cost
         elif self.mode == "standby":
-            return self.STANDBY_MODE.get("cost")
+            return standby_cost
         elif self.mode == "shutdown":
-            return self.SHUTDOWN_MODE.get("cost")
+            return shutdown_cost
         else:
             return 0.0
 

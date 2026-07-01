@@ -23,13 +23,13 @@ def run_manual():
     out.write_to_log(sim_output)
 
     # Write output to local CSV file, 'output.csv'
-    # out.write_to_csv(sim_output)
+    out.write_to_csv(sim_output)
 
     # Formats CSV and writes output to local Excel file, 'output.xlsx'
-    # out.write_to_excel()
+    out.write_to_excel()
 
     # Reads Excel file and plots the output
-    # out.plot()
+    out.plot()
 
 
 def run_ui():
@@ -69,7 +69,7 @@ def main():
     # Uncomment the line below to run the simulation with a manual configuration
     run_manual()
 
-    # TODO: Update interface to consider new simulation parameters
+    # TODO: Update interface to consider new simulation UI
     # Uncomment the line below to run the simulation with a UI for input configuration
     # run_ui()
 

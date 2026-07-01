@@ -10,9 +10,12 @@ def write_to_log(sim_output):
         for t, data in sim_output.items():
             print(f"Time step {t}: t={t:.3f}s\n", file=logfile)
             print(
-                f"  Supply: type={data['supply']['type']}, energy={data['supply']['energy_supply']:.5f}J, power={data['supply']['power_supply']:.5f}W", file=logfile)
+                f"  Supply: type={data['supply']['type']}, energy={data['supply']['energy_supply']:.7f}J, power={data['supply']['power_supply']:.7f}W", file=logfile)
             print(
                 f"  Load: type={data['load']['type']}, status={data['load']['mode']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.7f}A, energy={data['load']['energy_consumed']:.7f}J, total_energy_consumed={data['load']['total_energy_consumed']:.7f}J", file=logfile)
+            if 'pmic' in data:
+                print(
+                    f"  PMIC: type={data['pmic']['type']}, status={data['pmic']['status']}, v_out={data['pmic']['vout']:.5f}V, vbat_ok={data['pmic']['vbat_ok']}, energy_to_storage={data['pmic']['energy_to_storage']:.7f}J, energy_from_storage={data['pmic']['energy_from_storage']:.7f}J", file=logfile)
             print(
                 f"  Storage: type={data['storage']['type']}, status={data['storage']['status']}, voltage={data['storage']['voltage']:.5f}V, current={data['storage']['current']:.7f}A, energy={data['storage']['energy_stored']:.7f}J, power={data['storage']['power_stored']:.7f}W\n", file=logfile)
             print("-" * 50, file=logfile)
@@ -76,21 +79,29 @@ def plot():
 
     # Plot same attribute for all components, in the same subplot and window
     plot_all_components_same_subplot(
+        df, components, ["energy", "J"])
+    plt.show()
+
+    plot_all_components_same_subplot(
         df, components, ["voltage", "V"])
     plt.show()
 
     # Plot same attribute for all components, in separate subplots, but same window
-    plot_all_components_different_subplots(
-        df, components, ["voltage", "V"])
-    plt.show()
+    # plot_all_components_different_subplots(
+    #     df, components, ["energy", "J"])
+    # plt.show()
 
     # Plot all attributes for a component, in separate subplots, but same window
     plot_all_attributes_for_component(
-        df, components[1], [["voltage", "V"], ["current", "A"], ["energy", "J"]])
+        df, components[0], [["power", "W"], ["energy", "J"]])
     plt.show()
 
     plot_all_attributes_for_component(
-        df, components[2], [["voltage", "V"], ["current", "A"], ["total_energy_consumed", "J"]])
+        df, components[1], [["voltage", "V"], ["energy", "J"]])
+    plt.show()
+
+    plot_all_attributes_for_component(
+        df, components[2], [["voltage", "V"], ["energy", "J"], ["total_energy_consumed", "J"]])
     plt.show()
 
 
