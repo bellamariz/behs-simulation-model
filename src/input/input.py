@@ -112,7 +112,7 @@ class Input:
 
             # Parse Program object from file
             prog = program.Program(
-                t_step, program_file, cpu_active_cost, cpu_standby_cost)
+                program_file, cpu_active_cost, cpu_standby_cost)
             prog.print()
 
             # Upload Program to the Load

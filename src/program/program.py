@@ -1,40 +1,27 @@
+import math
+
+# A program instruction (Operation) is processed every PROCESSING_CLOCK.
+PROCESSING_CLOCK = 0.01
+
+# NOTE: It is NOT recommended to change this PROCESSING_CLOCK value.
+# If its value is larger than the simulation time step, it will cause inaccuracies.
+
+
 # Class Operation for the BEHS simulation model
 # It represents one software operation executed by a MCU Load
-# We assume only ONE Operation is executed per simulation time step.
 class Operation:
     def __init__(self, name: str, instruction: str, cost: float):
         self.name = name
         self.instruction = instruction
-        self.cost = cost
+        self.cost = cost  # total cost for the full operation, regardless of duration
         self.duration = 0.0
-        self.t_steps_needed = 0
-
-    # Calculates the operation cost for a given simulation time step
-    def get_cost_for_t_step(self, t_step: float) -> float:
-        if self.duration < t_step:
-            return self.cost * (self.duration / t_step)
-        else:
-            return self.cost
-
-    # Calculates the number of simulation time steps needed to complete the operation
-    def get_t_steps_needed(self, t_step: float) -> int:
-        if self.duration == 0.0:
-            return 0
-
-        # Value is rounded to the nearest integer
-        steps = round(self.duration / t_step)
-
-        # If result is too small, Python will round it to 0
-        # But we assume each Operation takes at least 1 simulation time step
-        if steps <= 0:
-            return 1
-
-        return steps
+        self.ticks_needed = 0  # duration quantized to PROCESSING_CLOCK ticks
 
 
 # Default Operation registry
-# - The STANDBY and ACTION are CPU operations and get their cost from Load class
+# - The STANDBY and ACTIVE are CPU operations and get their cost from Load class
 # - The LOOP and END operations have zero cost and duration
+# - The remaining operations have a fixed cost, which will be added to the CPU mode base cost ("standby" or "active")
 _OPERATION_REGISTRY = {
     "LOOP": Operation(name="start_loop", instruction="LOOP", cost=0.0),
     "END": Operation(name="end_loop", instruction="END", cost=0.0),
@@ -48,51 +35,94 @@ _OPERATION_REGISTRY = {
 
 # Class Program represents a script of code that will be executed by the MCU Load
 # It reads the program file and loads the operations and their duration
-# We assume only ONE Operation is executed per simulation time step.
+# Execution advances each PROCESSING_CLOCK, allowing multiple operations per simulation time step.
 class Program:
-    def __init__(self, t_step: float, filepath: str, cpu_active_cost: float, cpu_standby_cost: float):
+    def __init__(self, filepath: str, cpu_active_cost: float, cpu_standby_cost: float):
         operations_from_file = self._parse_program_file(filepath)
 
         self.FILEPATH = filepath
         self.CPU_ACTIVE_COST = cpu_active_cost
         self.CPU_STANDBY_COST = cpu_standby_cost
 
-        self.operations = self._parse_operations(operations_from_file, t_step)
-        self.t_steps_completed = 0
-        self.t_steps_needed = sum(op.t_steps_needed for op in self.operations)
+        self.operations = self._parse_operations(operations_from_file)
         self.total_cost = sum(op.cost for op in self.operations)
-        self.total_duration = t_step * self.t_steps_needed
+        self.total_duration = sum(op.duration for op in self.operations)
 
-    # Returns the executing Operation for current time step
-    def get_executing_operation(self) -> 'Operation':
-        if self.t_steps_needed == 0:
-            return None
+        # Execution state: index of the currently executing operation and
+        # how many PROCESSING_CLOCK ticks are left to finish executing it
+        self.current_op_index = 0
+        self.current_op_remaining_ticks = 0
+        self._advance_to_next_valid_op()
 
-        # Get the index of the current time step in the program execution
-        index = self.t_steps_completed % self.t_steps_needed
+    # Processes one simulation time step and gets the total cost for it.
+    # For each tick (PROCESSING_CLOCK), it computes:
+    #   - the CPU mode cost (standby or active);
+    #   - the operation cost;
+    # Goes through all the operations that fit (even partially) within this t_step.
+    # Starts program again if all operations are exhausted before t_step is complete.
+    def get_cost_for_t_step(self, t_step: float) -> float:
+        # Determine how many PROCESSING_CLOCK ticks fit in this t_step
+        # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
+        ticks_per_t_step = max(1, round(t_step / PROCESSING_CLOCK))
+        total_cost = 0.0
 
-        # Search through Operations list to find the one currently executing
-        steps = 0
-        for op in self.operations:
-            if op.t_steps_needed == 0:
-                continue
+        # For every PROCESSING_CLOCK tick
+        for _ in range(ticks_per_t_step):
+            # Program finished - start from the beginning again
+            if self.current_op_index >= len(self.operations):
+                self.current_op_index = 0
+                self._advance_to_next_valid_op()
 
-            steps += op.t_steps_needed
-            if index < steps:
-                return op
+                # Cancel execution if the program has no valid operations
+                if self.current_op_index >= len(self.operations):
+                    break
 
-        return None
+            # Get the current operation for this tick
+            op = self.operations[self.current_op_index]
+
+            # Get the CPU base cost and the operation cost
+            if op.instruction == "STANDBY":
+                total_cost += self.CPU_STANDBY_COST / ticks_per_t_step
+            elif op.instruction == "ACTIVE":
+                total_cost += self.CPU_ACTIVE_COST / ticks_per_t_step
+            else:
+                # CPU base cost when active + operation specific cost
+                total_cost += self.CPU_ACTIVE_COST / ticks_per_t_step
+                if op.cost > 0.0:
+                    total_cost += op.cost / op.ticks_needed
+
+            # Decrease the remaining ticks necessary to complete operation
+            self.current_op_remaining_ticks -= 1
+
+            # Advance to next operation once there are no ticks left for operation
+            if self.current_op_remaining_ticks <= 0:
+                self.current_op_index += 1
+                self._advance_to_next_valid_op()
+
+        return total_cost
+
+    # Makes current_op_index skip operations with zero duration (LOOP, END, etc.)
+    # Sets current_op_remaining_ticks for the next valid operation
+    def _advance_to_next_valid_op(self):
+        while self.current_op_index < len(self.operations):
+            # Get the next operation that needs to be executed
+            op = self.operations[self.current_op_index]
+            # Set the number of PROCESSING_CLOCK ticks needed to execute this operation
+            if op.ticks_needed > 0:
+                self.current_op_remaining_ticks = op.ticks_needed
+                return
+            # Skip operations with zero duration
+            self.current_op_index += 1
 
     # Print Operations list of the Program object
     def print_operations(self):
         for i, op in enumerate(self.operations):
             print(
-                f"  #{i} | name={op.name}, inst={op.instruction}, dur={op.duration:.5f}, cost={op.cost:.5f}, steps={op.t_steps_needed}")
+                f"  #{i} | name={op.name}, inst={op.instruction}, dur={op.duration:.5f}, cost={op.cost:.5f}, ticks={op.ticks_needed}")
 
     # Print Program attributes
     def print(self):
-        print(f"=== Executed Program: {self.FILEPATH} ===")
-        print(f"total_steps={self.t_steps_needed},")
+        print(f"=== Program to be executed: {self.FILEPATH} ===")
         print(f"total_duration={self.total_duration:.5f}s,")
         print(f"total_cost={self.total_cost:.5f}A,")
         print("operations=")
@@ -103,7 +133,8 @@ class Program:
         with open(filepath, 'r') as file:
             return [line.strip() for line in file if line.strip()]
 
-    def _parse_operations(self, operations_from_file: list[str], t_step: float) -> list[Operation]:
+    # Parse the program file and create a list of Operation objects
+    def _parse_operations(self, operations_from_file: list[str]) -> list[Operation]:
         operations = []
         for op in operations_from_file:
             # Parse operation line: 'INSTRUCTION [DURATION]'
@@ -127,11 +158,11 @@ class Program:
             registry_op = _OPERATION_REGISTRY[instruction]
             new_op = Operation(
                 name=registry_op.name, instruction=registry_op.instruction, cost=registry_op.cost)
-            new_op.duration = duration
 
-            # Number of simulation steps needed to complete the operation
-            # Value is rounded to the nearest integer
-            new_op.t_steps_needed = new_op.get_t_steps_needed(t_step)
+            # Get total duration and PROCESSING_CLOCK ticks needed to execute
+            new_op.duration = duration
+            new_op.ticks_needed = math.ceil(
+                duration / PROCESSING_CLOCK) if duration > 0 else 0
 
             if instruction == "ACTIVE":
                 new_op.cost = self.CPU_ACTIVE_COST
