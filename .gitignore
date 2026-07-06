@@ -4,6 +4,7 @@
 *.csv
 *.xlsx
 *.log
+results*/
 
 # Byte-compiled files
 __pycache__/
