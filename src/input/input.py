@@ -106,14 +106,17 @@ class Input:
 
         # Upload software to the Load (if applicable)
         if load_type in _UPLOAD_SOFTWARE_REGISTRY:
+            # Read program file path from config
             program_file = config.get("program_filepath")
+            if program_file is None:
+                raise ValueError(
+                    "Software program file must be specified in the config file")
+
             cpu_active_cost = load_cfg.get("modes").get("active").get("cost")
             cpu_standby_cost = load_cfg.get("modes").get("standby").get("cost")
 
-            # Parse Program object from file
+            # Parse Program object from file and upload to the Load
             prog = program.Program(
                 program_file, cpu_active_cost, cpu_standby_cost, "float", 0.001)
             prog.print()
-
-            # Upload Program to the Load
             self.load.upload_software(prog)
