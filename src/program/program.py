@@ -52,6 +52,7 @@ class Program:
 
         operations_from_file = self._parse_program_file(filepath)
         self.operations = self._parse_operations(operations_from_file)
+        self.executed_ops_last_step: list[str] = []
 
         # Control execution state:
         #   - index of the currently executing operation
@@ -59,7 +60,7 @@ class Program:
         self.current_op_index = 0
         self.current_op_remaining_ticks = 0           # integer model: ticks left
         self.current_op_remaining_seconds = 0.0       # float model: seconds left
-        self._advance_to_next_valid_op()
+        self._get_next_valid_op()
 
     # Processes one simulation time step and gets the total cost for it.
     # For each tick (PROCESSING_CLOCK), it computes:
@@ -87,6 +88,7 @@ class Program:
         estimated_zero = 1e-12
 
         total_cost = 0.0
+        self.executed_ops_last_step = []
         for _ in range(ticks_per_t_step):
             remaining_tick = self.PROCESSING_CLOCK
 
@@ -109,6 +111,10 @@ class Program:
                 op = self.operations[self.current_op_index]
                 elapsed = min(remaining_tick,
                               self.current_op_remaining_seconds)
+
+                # Track unique operations executed in this t_step
+                if op.instruction not in self.executed_ops_last_step:
+                    self.executed_ops_last_step.append(op.instruction)
 
                 # Calculate operation cost for the elapsed time
                 if op.duration >= t_step:
@@ -147,6 +153,7 @@ class Program:
         ticks_per_t_step = max(1, math.ceil(t_step / self.PROCESSING_CLOCK))
 
         total_cost = 0.0
+        self.executed_ops_last_step = []
         for _ in range(ticks_per_t_step):
             # If program is finished, start again from the beginning
             # TODO: Also start over if MCU is no longer in active mode - depends on interface
@@ -161,6 +168,10 @@ class Program:
 
             # Get the current operation for this tick
             op = self.operations[self.current_op_index]
+
+            # Track unique operations executed in this t_step
+            if op.instruction not in self.executed_ops_last_step:
+                self.executed_ops_last_step.append(op.instruction)
 
             # Calculate total cost for this tick
             if op.duration >= t_step:
@@ -197,6 +208,7 @@ class Program:
             else:
                 self.current_op_remaining_seconds = op.duration
                 self.current_op_remaining_ticks = op.ticks_needed
+                return
 
     # Print Operations list of the Program object
     def print_operations(self):
