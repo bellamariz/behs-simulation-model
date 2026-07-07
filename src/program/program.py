@@ -52,7 +52,10 @@ class Program:
 
         operations_from_file = self._parse_program_file(filepath)
         self.operations = self._parse_operations(operations_from_file)
-        self.executed_ops_last_step: list[str] = []
+
+        # Tracks elapsed seconds per instruction during the last t_step
+        # Format: {instruction: elapsed_seconds}
+        self.executed_ops_last_step: dict[str, float] = {}
 
         # Control execution state:
         #   - index of the currently executing operation
@@ -86,9 +89,9 @@ class Program:
         # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
         ticks_per_t_step = max(1, math.ceil(t_step / self.PROCESSING_CLOCK))
         estimated_zero = 1e-12
+        self.executed_ops_last_step = {}
 
         total_cost = 0.0
-        self.executed_ops_last_step = []
         for _ in range(ticks_per_t_step):
             remaining_tick = self.PROCESSING_CLOCK
 
@@ -112,9 +115,10 @@ class Program:
                 elapsed = min(remaining_tick,
                               self.current_op_remaining_seconds)
 
-                # Track unique operations executed in this t_step
-                if op.instruction not in self.executed_ops_last_step:
-                    self.executed_ops_last_step.append(op.instruction)
+                # Track elapsed seconds per instruction for this t_step
+                instruct = op.instruction
+                self.executed_ops_last_step[instruct] = self.executed_ops_last_step.get(
+                    instruct, 0.0) + elapsed
 
                 # Calculate operation cost for the elapsed time
                 if op.duration >= t_step:
@@ -151,9 +155,9 @@ class Program:
         # Determine how many PROCESSING_CLOCK ticks fit in this t_step
         # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
         ticks_per_t_step = max(1, math.ceil(t_step / self.PROCESSING_CLOCK))
+        self.executed_ops_last_step = {}
 
         total_cost = 0.0
-        self.executed_ops_last_step = []
         for _ in range(ticks_per_t_step):
             # If program is finished, start again from the beginning
             # TODO: Also start over if MCU is no longer in active mode - depends on interface
@@ -169,9 +173,10 @@ class Program:
             # Get the current operation for this tick
             op = self.operations[self.current_op_index]
 
-            # Track unique operations executed in this t_step
-            if op.instruction not in self.executed_ops_last_step:
-                self.executed_ops_last_step.append(op.instruction)
+            # Track elapsed seconds per instruction for this t_step
+            instruct = op.instruction
+            self.executed_ops_last_step[instruct] = self.executed_ops_last_step.get(
+                instruct, 0.0) + self.PROCESSING_CLOCK
 
             # Calculate total cost for this tick
             if op.duration >= t_step:

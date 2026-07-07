@@ -14,8 +14,11 @@ def write_to_log(sim_output):
             print(
                 f"  Load: type={data['load']['type']}, status={data['load']['mode']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.7f}A, energy={data['load']['energy_consumed']:.7f}J, total_energy_consumed={data['load']['total_energy_consumed']:.7f}J", file=logfile)
             if data['load']['program_executed_ops']:
-                print(
-                    f"  Program: ops={data['load']['program_executed_ops']}", file=logfile)
+                ops_str = ", ".join(
+                    f"{instruct}:{secs:.4f}s"
+                    for instruct, secs in data['load']['program_executed_ops'].items()
+                )
+                print(f"  Program: ops=[{ops_str}]", file=logfile)
             if 'pmic' in data:
                 print(
                     f"  PMIC: type={data['pmic']['type']}, status={data['pmic']['status']}, v_out={data['pmic']['vout']:.5f}V, vbat_ok={data['pmic']['vbat_ok']}, energy_to_storage={data['pmic']['energy_to_storage']:.7f}J, energy_from_storage={data['pmic']['energy_from_storage']:.7f}J", file=logfile)
@@ -36,7 +39,9 @@ def write_to_csv(sim_output):
             program_executed_ops = "NaN"
             if data['load']['program_executed_ops']:
                 program_executed_ops = ",".join(
-                    map(str, data['load']['program_executed_ops']))
+                    f"{instruct}:{secs:.4f}s"
+                    for instruct, secs in data['load']['program_executed_ops'].items()
+                )
 
             writer.writerow({
                 "step": t,

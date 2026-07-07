@@ -68,7 +68,7 @@ def run(sim_input):
         }
 
         if sim_input.load.program is not None:
-            sim_output[t]["load"]["program_executed_ops"] = list(
+            sim_output[t]["load"]["program_executed_ops"] = dict(
                 sim_input.load.program.executed_ops_last_step)
 
         if sim_input.pmic is not None:
