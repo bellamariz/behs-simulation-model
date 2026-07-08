@@ -87,7 +87,7 @@ class Program:
     def _get_cost_float(self, t_step: float) -> float:
         # Determine how many PROCESSING_CLOCK ticks fit in this t_step
         # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
-        ticks_per_t_step = max(1, math.ceil(t_step / self.PROCESSING_CLOCK))
+        ticks_per_t_step = max(1, round(t_step / self.PROCESSING_CLOCK))
         estimated_zero = 1e-12
         self.executed_ops_last_step = {}
 
@@ -154,7 +154,7 @@ class Program:
     def _get_cost_integer(self, t_step: float) -> float:
         # Determine how many PROCESSING_CLOCK ticks fit in this t_step
         # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
-        ticks_per_t_step = max(1, math.ceil(t_step / self.PROCESSING_CLOCK))
+        ticks_per_t_step = max(1, round(t_step / self.PROCESSING_CLOCK))
         self.executed_ops_last_step = {}
 
         total_cost = 0.0
