@@ -124,11 +124,14 @@ class Input:
             raise ValueError(
                 "Software program file must be specified in the config file")
 
-        program_processing_clock = program_cfg.get("processing_clock")
-        if program_processing_clock is None:
+        program_clock = program_cfg.get("processing_clock")
+        if program_clock is None:
+            program_clock = program.DEFAULT_PROCESSING_CLOCK
             print(
-                "Warning: Program processing clock not specified, a default value will be used.")
-            program_processing_clock = program.DEFAULT_PROCESSING_CLOCK
+                "Warning: Program clock not specified, will use 1ms as default.")
+        elif program_clock > self.t_step or program_clock < program.DEFAULT_PROCESSING_CLOCK:
+            raise ValueError(
+                f"Provided program clock is invalid: {program_clock}.")
 
         # Get Load's CPU parameters for Program initialization
         load_cfg = config.get("load")
@@ -137,6 +140,6 @@ class Input:
 
         # Parse Program object from file and upload to the Load
         prog = program.Program(
-            program_file, cpu_active_cost, cpu_standby_cost, program_processing_clock)
+            program_file, cpu_active_cost, cpu_standby_cost, program_clock)
         prog.print()
         self.load.upload_software(prog)

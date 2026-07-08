@@ -168,7 +168,6 @@ The configuration parameters are:
 | **v_min** | `float` | Minimum operating voltage. |
 | **v_max** | `float` | Maximum operating voltage. |
 | **modes** | `dict` | List of CPU operating modes, their consuming current cost (in A) and operating voltage (in V). |
-| **program** | `string` | Path to the script file that represents software being executed by the MCU. |
 
 For example, if considering an actual MCU [Texas Instruments MSP430FR5994](https://www.ti.com/lit/ds/slase54d/slase54d.pdf?ts=1781671720297).
 
@@ -196,7 +195,7 @@ The `MCU` configuration is:
     "modes": {
       "shutdown": { "cost": 0.0000003, "v_oper": 2.0 },
       "standby": { "cost": 0.000001, "v_oper": 2.2 },
-      "active": { "cost": 0.001920, "v_oper": 3.0 }
+      "active": { "cost": 0.00192, "v_oper": 3.0 }
     }
   }
 }
@@ -218,26 +217,61 @@ The list of default available operations are:
 | Task | transmitting | `TX` | Transmitting communication packets in active power mode. |
 | Task | receiving | `RX` | Receiving communication packagers in active power mode. |
 
-The user MUST include a script file that defines the program sequence they wish to execute. Each line of the script MUST be an instruction followed by its consumption current in Ampere (cost). These two parameters are obligatory. A third parameter MAY be added, which is the execution time in seconds (duration) for that instruction.
+The configuration parameters are:
+
+| Parameter | Type | Description |
+|---|---|---|
+| **filepath** | `string` | Path to the text file that contains the program to be executed. |
+| **processing_clock** | `float` | The internal clock for processing program instructions (in seconds). |
 
 For example:
 
-```txt
-SLEEP   0.000001  60
-SENSE   0.006     0.044
-PROC    0.00192   0.0001
-TX      0.03      0.00057
-RX      0.027     0.1025
-```
-
-> The sensing, transmitting and receiving tasks are based on the work done by [Climent et al](https://onlinelibrary.wiley.com/doi/full/10.1002/cpe.3151). The cpu_sleeping and cpu_processing costs are based on TI MSP430FR5994's CPU values.
-
-The path to this script file is included on the configuration file as well:
-
 ```json
 {
-  "program_file": "src/input/files/program01.txt"
+  "program": {
+    "filepath": "src/program/files/program01.txt",
+    "processing_clock": 0.005
+  }
 }
+```
+
+## 3.1. Processing Clock
+
+Within each simulation **step**, the `Program` class will process operations according to an internal clock, **processing_clock** (in seconds). This parameter is programmable by the user on the configuration file, but if not specified, a default value of 1ms will be used.
+
+The clock MUST be a multiple of **step** in order to guarantee that operations are processed correctly. For example, for a **step** of 250ms and a **processing_clock** (tick) of 100ms (not multiples), if an operation takes up a full **step** to execute, it means it needs 2.5 ticks (**processing_clock**) to execute. This value is not a whole number, so it will be rounded down to 2 ticks (< **step**), and this approximation can negatively impact the calculations for cost and/or duration of the operation.
+
+Lastly, if the configured clock is smaller than the default (1ms) or greater than the simulation **step**, it will not be accepted and the default will be used instead. The smaller the clock, the more accurate the execution results will be within a simulation **step**. 
+
+## 3.2. Program Script File
+
+In order to load a `Program` to the simulation, the user MUST include a script file that defines the program sequence they wish to execute. Each line of the script MUST be a code instruction followed by its consumption current in Ampere (cost). These two parameters are obligatory.
+
+A third parameter may be added to the script, which is the operation's execution time (in milliseconds). An operation may have a well-defined duration or not, but if present, the duration MUST be at minimum the default **processing_clock** of 1ms. In addition, it is highly recommended that this duration be a multiple of the **processing_clock** whenever feasible, as to facilitate the operation processing.
+
+For example, if we wish to execute the following software:
+
+```txt
+| Instruction | Cost (A) | Duration (s) |
+|-|-|-|
+| RX | 0.027 | 0.1025 |
+| PROC | 0.00192 | 0.0001 |
+| SLEEP | 0.000001 | 60.0 |
+| SENSE | 0.006 | 0.044 |
+| PROC | 0.00192 | 0.0001 | 
+| TX | 0.03 | 0.00057 |
+```
+> The sensing, transmitting and receiving tasks are based on the work done by [Climent et al](https://onlinelibrary.wiley.com/doi/full/10.1002/cpe.3151). The cpu_sleeping and cpu_processing costs are based on TI MSP430FR5994's CPU values.
+
+The input script file should be:
+
+```txt
+RX      0.027     102.5
+PROC    0.00192   1
+SLEEP   0.000001  60000
+SENSE   0.006     44
+PROC    0.00192   1
+TX      0.03      1
 ```
 
 ## 4. PMIC: Power Management Integrated Circuit
@@ -361,6 +395,9 @@ When applying the values from the *BQ25570* datasheet, the `PMIC` configuration 
       "active": { "cost": 0.00192, "v_oper": 3.0 }
     }
   },
-  "program_filepath": "src/program/files/program01.txt"
+  "program": {
+    "filepath": "src/program/files/program01.txt",
+    "processing_clock": 0.005
+  }
 }
 ```

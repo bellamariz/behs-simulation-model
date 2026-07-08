@@ -3,7 +3,7 @@ import math
 # A program instruction (Operation) is processed every PROCESSING_CLOCK.
 DEFAULT_PROCESSING_CLOCK = 0.001
 # NOTE: If PROCESSING_CLOCK  is larger than the simulation time step, it will cause inaccuracies.
-# Therefore, the simulator assumes PROCESSING_CLOCK is always <= than the time step.
+# Therefore, the simulator assumes PROCESSING_CLOCK is always <= than the time step and greater than default 1ms.
 
 # There two models for calculating the Operation cost per PROCESSING_CLOCK tick:
 # 1) sub-tick: Operation duration is as is
@@ -19,7 +19,7 @@ class Operation:
         self.name = name
         self.instruction = instruction
         self.cost = 0.0  # consumption current cost (for given duration)
-        self.duration = 0.0  # duration in seconds
+        self.duration = 0.0  # duration in milliseconds
         self.ticks_needed = 0  # duration parsed to PROCESSING_CLOCK ticks
         self.unknown_duration = False  # True if duration is unknown
 
@@ -77,7 +77,7 @@ class Program:
     def print_operations(self):
         for i, op in enumerate(self.operations):
             print(
-                f"  #{i} | name={op.name}, inst={op.instruction}, cost={op.cost:.6f}, duration={op.duration:.6f}, ticks={op.ticks_needed}, unknown_duration={op.unknown_duration}")
+                f"  #{i} | name={op.name}, inst={op.instruction}, cost={op.cost:.6f}A, duration={op.duration*1000:.2f}ms, ticks={op.ticks_needed}, unknown_duration={op.unknown_duration}")
 
     # Processes the execution cost of the Program for a given time step, t_step.
     # Goes through all the operations that fit (even partially) within t_step.
@@ -261,6 +261,7 @@ class Program:
 
             # Validate duration
             duration = float(parts[2]) if len(parts) == 3 else 0.0
+            duration_in_seconds = duration / 1000.0
 
             # Build new Operation object (copy to avoid mutating registry)
             registry_op = _OPERATION_REGISTRY[instruction]
@@ -269,13 +270,13 @@ class Program:
                 instruction=registry_op.instruction,
             )
             new_op.cost = cost
-            new_op.duration = duration
+            new_op.duration = duration_in_seconds
 
             # Get PROCESSING_CLOCK ticks needed to execute based on duration
             # TODO: Process instructions of unknown duration
-            if duration > 0:
+            if duration_in_seconds > 0:
                 new_op.ticks_needed = math.ceil(
-                    duration / self.PROCESSING_CLOCK)
+                    duration_in_seconds / self.PROCESSING_CLOCK)
             else:
                 new_op.unknown_duration = True
 
