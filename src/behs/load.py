@@ -181,6 +181,11 @@ class MCU(Load):
         elif v_supply >= self.V_OPER_ACTIVE:
             self.mode = "active"
 
+        # CPU is reset and there's no full data retention if MCU loses power (not "active" or "standby")
+        # Unless the Program is designed to save state, it will be reset
+        if self.program is not None and self.mode not in ["active", "standby"]:
+            self.program.reset()
+
         # Update Load state
         super().refresh(v_supply, t_step)
 

@@ -79,6 +79,14 @@ class Program:
             print(
                 f"  #{i} | name={op.name}, inst={op.instruction}, cost={op.cost:.6f}A, duration={op.duration*1000:.2f}ms, ticks={op.ticks_needed}, unknown_duration={op.unknown_duration}")
 
+    # Reset program execution if program does not save state and Load loses power
+    def reset(self):
+        self.current_op_index = 0
+        self.current_op_remaining_ticks = 0
+        self.current_op_remaining_seconds = 0.0
+        self.executed_ops_last_step = {}
+        self._get_next_valid_op()
+
     # Processes the execution cost of the Program for a given time step, t_step.
     # Goes through all the operations that fit (even partially) within t_step.
     # For each tick (PROCESSING_CLOCK), it computes:
