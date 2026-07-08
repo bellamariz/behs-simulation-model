@@ -42,7 +42,7 @@ _OPERATION_REGISTRY = {
 # Execution advances each PROCESSING_CLOCK, allowing multiple operations per simulation time step.
 class Program:
     def __init__(self, filepath: str, cpu_active_cost: float, cpu_standby_cost: float,
-                 tick_model: str = CLOCK_TICK_MODEL_FLOAT, processing_clock: float = DEFAULT_PROCESSING_CLOCK):
+                 processing_clock: float, tick_model: str = CLOCK_TICK_MODEL_FLOAT):
 
         self.FILEPATH = filepath
         self.CPU_ACTIVE_COST = cpu_active_cost
@@ -65,25 +65,41 @@ class Program:
         self.current_op_remaining_seconds = 0.0       # float model: seconds left
         self._get_next_valid_op()
 
-    # Processes one simulation time step and gets the total cost for it.
+    # Print Program object
+    def print(self):
+        print(f"=== Program to be executed: {self.FILEPATH} ===")
+        print(
+            f"processing_clock={self.PROCESSING_CLOCK}, tick_model={self.TICK_MODEL}")
+        print("operations=")
+        self.print_operations()
+
+    # Print operations list of the Program object
+    def print_operations(self):
+        for i, op in enumerate(self.operations):
+            print(
+                f"  #{i} | name={op.name}, inst={op.instruction}, cost={op.cost:.6f}, duration={op.duration:.6f}, ticks={op.ticks_needed}, unknown_duration={op.unknown_duration}")
+
+    # Processes the execution cost of the Program for a given time step, t_step.
+    # Goes through all the operations that fit (even partially) within t_step.
     # For each tick (PROCESSING_CLOCK), it computes:
     #   - the CPU mode cost (standby or active);
     #   - the operation cost;
-    # Goes through all the operations that fit (even partially) within this t_step.
-    # Starts program again if all operations are exhausted before t_step is complete.
+    # Starts Program again if all operations are exhausted before t_step is complete.
     def get_cost_for_t_step(self, t_step: float) -> float:
         if self.TICK_MODEL == CLOCK_TICK_MODEL_FLOAT:
             return self._get_cost_float(t_step)
         return self._get_cost_integer(t_step)
 
     # FLOAT MODEL
-    # Within each PROCESSING_CLOCK tick, an operation may end before tick ends
-    # The next Operation may begin in the same tick
-    # - Task Cost = op.cost * (elapsed / duration)
-    # - Base CPU Cost = cpu_cost * (elapsed / t_step)
+    # Within each PROCESSING_CLOCK tick,
+    #   - an operation i may end before the tick ends (if duration < PROCESSING_CLOCK);
+    #   - the next operation i+1 will begin in the same tick
+    # The cost of each operation is proportional to the fraction of the tick it occupies:
+    #   - Task Cost = op.cost * (elapsed / duration)
+    #   - Base CPU Cost = cpu_cost * (elapsed / t_step)
     #
-    # More accurate results regardless of PROCESSING_CLOCK (if <= t_step),
-    # but elapsed time tracking may have precision issues since it handles very small floats.
+    # Tracks duration and cost accurately, regardless of PROCESSING_CLOCK value (as long as PROCESSING_CLOCK <= t_step).
+    # Will have precision issues if PROCESSING_CLOCK is not a multiple of t_step.
     def _get_cost_float(self, t_step: float) -> float:
         # Determine how many PROCESSING_CLOCK ticks fit in this t_step
         # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
@@ -144,13 +160,15 @@ class Program:
         return total_cost
 
     # INTEGER MODEL
-    # Each Operation occupies a whole number of ticks (at least one, if its duration < PROCESSING_CLOCK)
-    # The next Operation only starts in the next tick
+    # Within each PROCESSING_CLOCK tick,
+    #   - all operations occupy at least one full tick (no partial ticks, even if their duration < PROCESSING_CLOCK);
+    #   - the next operation i+1 only starts in the next tick.
+    # The cost of each operation is proportional to the tick it occupies:
     #   - Task Cost = op.cost / ticks_needed per tick.
     #   - Base CPU Cost = cpu_cost / ticks_per_t_step per tick.
     #
-    # More accurate results for smaller PROCESSING_CLOCK values (e.g. 1ms),
-    # but elapsed time tracking is more solid and well-defined since it uses integer ticks.
+    # Only tracks duration and cost accurately for smaller PROCESSING_CLOCK values, e.g. 1ms (as long as PROCESSING_CLOCK <= t_step).
+    # Will have precision issues if PROCESSING_CLOCK is not a multiple of t_step.
     def _get_cost_integer(self, t_step: float) -> float:
         # Determine how many PROCESSING_CLOCK ticks fit in this t_step
         # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
@@ -214,18 +232,6 @@ class Program:
                 self.current_op_remaining_seconds = op.duration
                 self.current_op_remaining_ticks = op.ticks_needed
                 return
-
-    # Print Operations list of the Program object
-    def print_operations(self):
-        for i, op in enumerate(self.operations):
-            print(
-                f"  #{i} | name={op.name}, inst={op.instruction}, cost={op.cost:.6f}, duration={op.duration:.6f}, ticks={op.ticks_needed}, unknown_duration={op.unknown_duration}")
-
-    # Print Program attributes
-    def print(self):
-        print(f"=== Program to be executed: {self.FILEPATH} ===")
-        print("operations=")
-        self.print_operations()
 
     # Read program file
     def _parse_program_file(self, filepath: str) -> list[str]:
