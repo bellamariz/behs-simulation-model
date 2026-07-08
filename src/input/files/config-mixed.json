@@ -23,8 +23,6 @@
     }
   },
   "program": {
-    "filepath": "src/program/files/program01.txt",
-    "processing_clock": 0.001,
-    "processing_model": "float"
+    "filepath": "src/program/files/program01.txt"
   }
 }
