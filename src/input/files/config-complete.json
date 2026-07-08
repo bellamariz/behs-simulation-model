@@ -23,5 +23,9 @@
       "active": { "cost": 0.001920, "v_oper": 3.0 }
     }
   },
-  "program_filepath": "src/program/files/program01.txt"
+  "program": {
+    "filepath": "src/program/files/program01.txt",
+    "processing_clock": 0.001,
+    "processing_model": "float"
+  }
 }

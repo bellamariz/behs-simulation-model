@@ -61,62 +61,82 @@ def load_config_from_ui(values):
 # The Input class configures all the simulation parameters
 class Input:
     def __init__(self, config: dict):
-        # Load simulation parameters
-        t_step = config.get("simulation").get("step")
-        t_duration = config.get("simulation").get("duration")
+        self._init_simulation_params(config)
+        self._init_behs_params(config)
+        if self.load.type in _UPLOAD_SOFTWARE_REGISTRY:
+            self._init_program_params(config)
 
-        if t_step is None or t_duration is None:
+    # Initialize simulation parameters
+    def _init_simulation_params(self, config: dict):
+        step = config.get("simulation").get("step")
+        duration = config.get("simulation").get("duration")
+
+        if step is None or duration is None:
             raise ValueError(
                 "Simulation 'step' and 'duration' must be specified in the config.")
 
-        self.t_step = t_step
+        self.t_step = step
         self.t_vector = _generate_t_vector(
-            start=0, end=t_duration, interval=t_step)
+            start=0, end=duration, interval=step)
 
-        # Load BEHS parameters: Energy Supply, Energy Storage, Load
+    # Initialize BEHS parameters
+    def _init_behs_params(self, config: dict):
+        # Energy Supply
         supply_cfg = config.get("supply")
-        storage_cfg = config.get("storage")
-        load_cfg = config.get("load")
-
         supply_type = supply_cfg.get("type")
-        storage_type = storage_cfg.get("type")
-        load_type = load_cfg.get("type")
-
         if supply_type not in _SUPPLY_REGISTRY:
-            raise ValueError(f"Unsupported supply type: {supply_type!r}")
-        if storage_type not in _STORAGE_REGISTRY:
-            raise ValueError(f"Unsupported storage type: {storage_type!r}")
-        if load_type not in _LOAD_REGISTRY:
-            raise ValueError(f"Unsupported load type: {load_type!r}")
-
+            raise ValueError(
+                f"Unsupported Energy Supply type: {supply_type!r}")
         self.supply = _SUPPLY_REGISTRY[supply_type](
             supply_cfg, self.t_vector, self.t_step)
+
+        # Energy Storage
+        storage_cfg = config.get("storage")
+        storage_type = storage_cfg.get("type")
+        if storage_type not in _STORAGE_REGISTRY:
+            raise ValueError(
+                f"Unsupported Energy Storage type: {storage_type!r}")
         self.storage = _STORAGE_REGISTRY[storage_type](storage_cfg)
+
+        # Load
+        load_cfg = config.get("load")
+        load_type = load_cfg.get("type")
+        if load_type not in _LOAD_REGISTRY:
+            raise ValueError(f"Unsupported Load type: {load_type!r}")
         self.load = _LOAD_REGISTRY[load_type](load_cfg)
-        self.pmic = None
 
-        # Load BEHS parameters: PMIC (if applicable)
+        # PMIC (if applicable)
         pmic_cfg = config.get("pmic")
-
         if pmic_cfg is not None:
             pmic_type = pmic_cfg.get("type")
             if pmic_type not in _PMIC_REGISTRY:
                 raise ValueError(f"Unsupported PMIC type: {pmic_type!r}")
             self.pmic = _PMIC_REGISTRY[pmic_type](pmic_cfg)
 
-        # Upload software to the Load (if applicable)
-        if load_type in _UPLOAD_SOFTWARE_REGISTRY:
-            # Read program file path from config
-            program_file = config.get("program_filepath")
-            if program_file is None:
-                raise ValueError(
-                    "Software program file must be specified in the config file")
+    def _init_program_params(self, config: dict):
+        program_cfg = config.get("program")
+        if program_cfg is None:
+            raise ValueError(
+                "Software program configuration must be specified in the config file")
 
-            cpu_active_cost = load_cfg.get("modes").get("active").get("cost")
-            cpu_standby_cost = load_cfg.get("modes").get("standby").get("cost")
+        program_file = program_cfg.get("filepath")
+        if program_file is None:
+            raise ValueError(
+                "Software program file must be specified in the config file")
 
-            # Parse Program object from file and upload to the Load
-            prog = program.Program(
-                program_file, cpu_active_cost, cpu_standby_cost, "float", 0.001)
-            prog.print()
-            self.load.upload_software(prog)
+        program_processing_clock = program_cfg.get("processing_clock")
+        if program_processing_clock is None:
+            print(
+                "Warning: Program processing clock not specified, a default value will be used.")
+            program_processing_clock = program.DEFAULT_PROCESSING_CLOCK
+
+        # Get Load's CPU parameters for Program initialization
+        load_cfg = config.get("load")
+        cpu_active_cost = load_cfg.get("modes").get("active").get("cost")
+        cpu_standby_cost = load_cfg.get("modes").get("standby").get("cost")
+
+        # Parse Program object from file and upload to the Load
+        prog = program.Program(
+            program_file, cpu_active_cost, cpu_standby_cost, program_processing_clock)
+        prog.print()
+        self.load.upload_software(prog)
