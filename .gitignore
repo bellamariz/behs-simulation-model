@@ -1,9 +1,10 @@
 # Output files
 # Generated output files by main.py
 # Do not need to be tracked by git
-output.csv
-output.xlsx
-output.log
+*.csv
+*.xlsx
+*.log
+results*/
 
 # Byte-compiled files
 __pycache__/

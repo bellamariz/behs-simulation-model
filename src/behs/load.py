@@ -153,11 +153,7 @@ class MCU(Load):
         # We only execute the program if the MCU is in active mode
         if self.mode == "active":
             if self.program is not None:
-                op = self.program.get_executing_operation()
-                if op is not None:
-                    if op.instruction == "STANDBY":
-                        return standby_cost
-                    return active_cost + op.get_cost_for_t_step(t_step)
+                return self.program.get_cost_for_t_step(t_step)
             return active_cost
         elif self.mode == "standby":
             return standby_cost
@@ -185,12 +181,13 @@ class MCU(Load):
         elif v_supply >= self.V_OPER_ACTIVE:
             self.mode = "active"
 
+        # CPU is reset and there's no full data retention if MCU loses power (not "active" or "standby")
+        # Unless the Program is designed to save state, it will be reset
+        if self.program is not None and self.mode not in ["active", "standby"]:
+            self.program.reset()
+
         # Update Load state
         super().refresh(v_supply, t_step)
-
-        # Advance program counter after energy is calculated for time step
-        if self.mode == "active" and self.program is not None:
-            self.program.t_steps_completed += 1
 
     def print(self, t_index, file):
         super().print(t_index, file)

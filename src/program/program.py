@@ -1,114 +1,258 @@
+import math
+
+# A program instruction (Operation) is processed every PROCESSING_CLOCK.
+DEFAULT_PROCESSING_CLOCK = 0.001
+# NOTE: If PROCESSING_CLOCK  is larger than the simulation time step, it will cause inaccuracies.
+# Therefore, the simulator assumes PROCESSING_CLOCK is always <= than the time step and greater than default 1ms.
+
+# There two models for calculating the Operation cost per PROCESSING_CLOCK tick:
+# 1) sub-tick: Operation duration is as is
+CLOCK_TICK_MODEL_FLOAT = "float"
+# 2) full-tick: if Operation duration < PROCESSING_CLOCK, it occupies at least one tick
+CLOCK_TICK_MODEL_INTEGER = "integer"
+
+
 # Class Operation for the BEHS simulation model
 # It represents one software operation executed by a MCU Load
-# We assume only ONE Operation is executed per simulation time step.
 class Operation:
-    def __init__(self, name: str, instruction: str, cost: float):
+    def __init__(self, name: str, instruction: str):
         self.name = name
         self.instruction = instruction
-        self.cost = cost
-        self.duration = 0.0
-        self.t_steps_needed = 0
-
-    # Calculates the operation cost for a given simulation time step
-    def get_cost_for_t_step(self, t_step: float) -> float:
-        if self.duration < t_step:
-            return self.cost * (self.duration / t_step)
-        else:
-            return self.cost
-
-    # Calculates the number of simulation time steps needed to complete the operation
-    def get_t_steps_needed(self, t_step: float) -> int:
-        if self.duration == 0.0:
-            return 0
-
-        # Value is rounded to the nearest integer
-        steps = round(self.duration / t_step)
-
-        # If result is too small, Python will round it to 0
-        # But we assume each Operation takes at least 1 simulation time step
-        if steps <= 0:
-            return 1
-
-        return steps
+        self.cost = 0.0  # consumption current cost (for given duration)
+        self.duration = 0.0  # duration in milliseconds
+        self.ticks_needed = 0  # duration parsed to PROCESSING_CLOCK ticks
+        self.unknown_duration = False  # True if duration is unknown
 
 
 # Default Operation registry
-# - The STANDBY and ACTION are CPU operations and get their cost from Load class
-# - The LOOP and END operations have zero cost and duration
+# - The PROC operation is a CPU operation in the "active" mode
+# - The SLEEP operation is a CPU operation in the "standby" mode
+# - The remaining operations have a fixed cost, which will be summed to the CPU mode base cost ("standby" or "active")
 _OPERATION_REGISTRY = {
-    "LOOP": Operation(name="start_loop", instruction="LOOP", cost=0.0),
-    "END": Operation(name="end_loop", instruction="END", cost=0.0),
-    "STANDBY": Operation(name="cpu_standby", instruction="STANDBY", cost=0.0),
-    "ACTIVE": Operation(name="cpu_processing", instruction="ACTIVE", cost=0.0),
-    "SENSE": Operation(name="sensing", instruction="SENSE", cost=0.006),
-    "TX": Operation(name="transmitting", instruction="TX", cost=0.03),
-    "RX": Operation(name="receiving", instruction="RX", cost=0.027),
+    "PROC": Operation(name="cpu_processing", instruction="PROC"),
+    "SLEEP": Operation(name="cpu_sleeping", instruction="SLEEP"),
+    "SENSE": Operation(name="sensing", instruction="SENSE"),
+    "TX": Operation(name="transmitting", instruction="TX"),
+    "RX": Operation(name="receiving", instruction="RX"),
 }
 
 
 # Class Program represents a script of code that will be executed by the MCU Load
 # It reads the program file and loads the operations and their duration
-# We assume only ONE Operation is executed per simulation time step.
+# Execution advances each PROCESSING_CLOCK, allowing multiple operations per simulation time step.
 class Program:
-    def __init__(self, t_step: float, filepath: str, cpu_active_cost: float, cpu_standby_cost: float):
-        operations_from_file = self._parse_program_file(filepath)
+    def __init__(self, filepath: str, cpu_active_cost: float, cpu_standby_cost: float,
+                 processing_clock: float, tick_model: str = CLOCK_TICK_MODEL_FLOAT):
 
         self.FILEPATH = filepath
         self.CPU_ACTIVE_COST = cpu_active_cost
         self.CPU_STANDBY_COST = cpu_standby_cost
+        self.TICK_MODEL = tick_model
+        self.PROCESSING_CLOCK = processing_clock
 
-        self.operations = self._parse_operations(operations_from_file, t_step)
-        self.t_steps_completed = 0
-        self.t_steps_needed = sum(op.t_steps_needed for op in self.operations)
-        self.total_cost = sum(op.cost for op in self.operations)
-        self.total_duration = t_step * self.t_steps_needed
+        operations_from_file = self._parse_program_file(filepath)
+        self.operations = self._parse_operations(operations_from_file)
 
-    # Returns the executing Operation for current time step
-    def get_executing_operation(self) -> 'Operation':
-        if self.t_steps_needed == 0:
-            return None
+        # Tracks elapsed seconds per instruction during the last t_step
+        # Format: {instruction: elapsed_seconds}
+        self.executed_ops_last_step: dict[str, float] = {}
 
-        # Get the index of the current time step in the program execution
-        index = self.t_steps_completed % self.t_steps_needed
+        # Control execution state:
+        #   - index of the currently executing operation
+        #   - how many PROCESSING_CLOCK ticks are left to finish executing it
+        self.current_op_index = 0
+        self.current_op_remaining_ticks = 0           # integer model: ticks left
+        self.current_op_remaining_seconds = 0.0       # float model: seconds left
+        self._get_next_valid_op()
 
-        # Search through Operations list to find the one currently executing
-        steps = 0
-        for op in self.operations:
-            if op.t_steps_needed == 0:
-                continue
+    # Print Program object
+    def print(self):
+        print(f"=== Program to be executed: {self.FILEPATH} ===")
+        print(
+            f"processing_clock={self.PROCESSING_CLOCK}, tick_model={self.TICK_MODEL}")
+        print("operations=")
+        self.print_operations()
 
-            steps += op.t_steps_needed
-            if index < steps:
-                return op
-
-        return None
-
-    # Print Operations list of the Program object
+    # Print operations list of the Program object
     def print_operations(self):
         for i, op in enumerate(self.operations):
             print(
-                f"  #{i} | name={op.name}, inst={op.instruction}, dur={op.duration:.5f}, cost={op.cost:.5f}, steps={op.t_steps_needed}")
+                f"  #{i} | name={op.name}, inst={op.instruction}, cost={op.cost:.6f}A, duration={op.duration*1000:.2f}ms, ticks={op.ticks_needed}, unknown_duration={op.unknown_duration}")
 
-    # Print Program attributes
-    def print(self):
-        print(f"=== Executed Program: {self.FILEPATH} ===")
-        print(f"total_steps={self.t_steps_needed},")
-        print(f"total_duration={self.total_duration:.5f}s,")
-        print(f"total_cost={self.total_cost:.5f}A,")
-        print("operations=")
-        self.print_operations()
+    # Reset program execution if program does not save state and Load loses power
+    def reset(self):
+        self.current_op_index = 0
+        self.current_op_remaining_ticks = 0
+        self.current_op_remaining_seconds = 0.0
+        self.executed_ops_last_step = {}
+        self._get_next_valid_op()
+
+    # Processes the execution cost of the Program for a given time step, t_step.
+    # Goes through all the operations that fit (even partially) within t_step.
+    # For each tick (PROCESSING_CLOCK), it computes:
+    #   - the CPU mode cost (standby or active);
+    #   - the operation cost;
+    # Starts Program again if all operations are exhausted before t_step is complete.
+    def get_cost_for_t_step(self, t_step: float) -> float:
+        if self.TICK_MODEL == CLOCK_TICK_MODEL_FLOAT:
+            return self._get_cost_float(t_step)
+        return self._get_cost_integer(t_step)
+
+    # FLOAT MODEL
+    # Within each PROCESSING_CLOCK tick,
+    #   - an operation i may end before the tick ends (if duration < PROCESSING_CLOCK);
+    #   - the next operation i+1 will begin in the same tick
+    # The cost of each operation is proportional to the fraction of the tick it occupies:
+    #   - Task Cost = op.cost * (elapsed / duration)
+    #   - Base CPU Cost = cpu_cost * (elapsed / t_step)
+    #
+    # Tracks duration and cost accurately, regardless of PROCESSING_CLOCK value (as long as PROCESSING_CLOCK <= t_step).
+    # Will have precision issues if PROCESSING_CLOCK is not a multiple of t_step.
+    def _get_cost_float(self, t_step: float) -> float:
+        # Determine how many PROCESSING_CLOCK ticks fit in this t_step
+        # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
+        ticks_per_t_step = max(1, round(t_step / self.PROCESSING_CLOCK))
+        estimated_zero = 1e-12
+        self.executed_ops_last_step = {}
+
+        total_cost = 0.0
+        for _ in range(ticks_per_t_step):
+            remaining_tick = self.PROCESSING_CLOCK
+
+            # Finish inner loop when tick is complete or when there are no operations left
+            # NOTE: When tracking the elapsed time of an Operation within a tick, we may encounter precision issues with very small floats
+            # Instead of checking for remaining_tick > 0, we check for a small value close to 0
+            while remaining_tick > estimated_zero:
+                # If program is finished, start again from the beginning
+                # TODO: Also start over if MCU is no longer in active mode - depends on interface
+                if self.current_op_index >= len(self.operations):
+                    # Reset current_op_index and get next valid operation
+                    self.current_op_index = 0
+                    self._get_next_valid_op()
+
+                    # Abort execution if the program has no valid operations
+                    if self.current_op_index >= len(self.operations):
+                        break
+
+                # Get the current operation and its elapsed time for this tick
+                op = self.operations[self.current_op_index]
+                elapsed = min(remaining_tick,
+                              self.current_op_remaining_seconds)
+
+                # Track elapsed seconds per instruction for this t_step
+                instruct = op.instruction
+                self.executed_ops_last_step[instruct] = self.executed_ops_last_step.get(
+                    instruct, 0.0) + elapsed
+
+                # Calculate operation cost for the elapsed time
+                if op.duration >= t_step:
+                    total_cost += op.cost * (elapsed / t_step)
+                else:
+                    total_cost += op.cost * (elapsed / op.duration)
+
+                # Add active CPU cost for non-CPU instructions
+                if op.instruction not in ["SLEEP", "PROC"]:
+                    total_cost += self.CPU_ACTIVE_COST * (elapsed / t_step)
+
+                # Decrease the remaining seconds necessary to complete operation
+                self.current_op_remaining_seconds -= elapsed
+                remaining_tick -= elapsed
+
+                # Move to next operation once current one is over
+                # NOTE: Since we are possibly dealing with very small floats, precision is an issue
+                # Instead of checking for remaining_seconds <= 0, we check for a small value close to 0
+                if self.current_op_remaining_seconds <= estimated_zero:
+                    self.current_op_index += 1
+                    self._get_next_valid_op()
+
+        return total_cost
+
+    # INTEGER MODEL
+    # Within each PROCESSING_CLOCK tick,
+    #   - all operations occupy at least one full tick (no partial ticks, even if their duration < PROCESSING_CLOCK);
+    #   - the next operation i+1 only starts in the next tick.
+    # The cost of each operation is proportional to the tick it occupies:
+    #   - Task Cost = op.cost / ticks_needed per tick.
+    #   - Base CPU Cost = cpu_cost / ticks_per_t_step per tick.
+    #
+    # Only tracks duration and cost accurately for smaller PROCESSING_CLOCK values, e.g. 1ms (as long as PROCESSING_CLOCK <= t_step).
+    # Will have precision issues if PROCESSING_CLOCK is not a multiple of t_step.
+    def _get_cost_integer(self, t_step: float) -> float:
+        # Determine how many PROCESSING_CLOCK ticks fit in this t_step
+        # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
+        ticks_per_t_step = max(1, round(t_step / self.PROCESSING_CLOCK))
+        self.executed_ops_last_step = {}
+
+        total_cost = 0.0
+        for _ in range(ticks_per_t_step):
+            # If program is finished, start again from the beginning
+            # TODO: Also start over if MCU is no longer in active mode - depends on interface
+            if self.current_op_index >= len(self.operations):
+                # Reset current_op_index and get next valid operation
+                self.current_op_index = 0
+                self._get_next_valid_op()
+
+                # Abort execution if the program has no valid operations
+                if self.current_op_index >= len(self.operations):
+                    break
+
+            # Get the current operation for this tick
+            op = self.operations[self.current_op_index]
+
+            # Track elapsed seconds per instruction for this t_step
+            instruct = op.instruction
+            self.executed_ops_last_step[instruct] = self.executed_ops_last_step.get(
+                instruct, 0.0) + self.PROCESSING_CLOCK
+
+            # Calculate total cost for this tick
+            if op.duration >= t_step:
+                total_cost += op.cost / ticks_per_t_step
+            else:
+                total_cost += op.cost / op.ticks_needed
+
+            # Add active CPU cost for non-CPU instructions
+            if op.instruction not in ["SLEEP", "PROC"]:
+                total_cost += self.CPU_ACTIVE_COST / ticks_per_t_step
+
+            # Decrease the remaining ticks necessary to complete operation
+            self.current_op_remaining_ticks -= 1
+
+            # Advance to next operation once there are no ticks left for operation
+            if self.current_op_remaining_ticks <= 0:
+                self.current_op_index += 1
+                self._get_next_valid_op()
+
+        return total_cost
+
+    # Makes current_op_index skip operations with zero duration
+    # Defines current_op_remaining_time (seconds/ticks) for the next valid operation
+    def _get_next_valid_op(self):
+        while self.current_op_index < len(self.operations):
+            # Get the next operation that needs to be executed
+            op = self.operations[self.current_op_index]
+
+            # Skip operation if their duration is unknown
+            # Otherwise, set how much time (seconds or ticks) is needed to execute it
+            if op.unknown_duration:
+                # TODO: Handle operations with unknown duration
+                self.current_op_index += 1
+            else:
+                self.current_op_remaining_seconds = op.duration
+                self.current_op_remaining_ticks = op.ticks_needed
+                return
 
     # Read program file
     def _parse_program_file(self, filepath: str) -> list[str]:
         with open(filepath, 'r') as file:
             return [line.strip() for line in file if line.strip()]
 
-    def _parse_operations(self, operations_from_file: list[str], t_step: float) -> list[Operation]:
+    # Parse the program file and create a list of Operation objects
+    def _parse_operations(self, operations_from_file: list[str]) -> list[Operation]:
         operations = []
         for op in operations_from_file:
-            # Parse operation line: 'INSTRUCTION [DURATION]'
+            # Parse operation line: 'INSTRUCTION COST [DURATION]'
             parts = op.split()
-            if len(parts) != 1 and len(parts) != 2:
+            if len(parts) not in [2, 3]:
                 print(
                     f"Warning: Operation '{op}' format is not recognized. Skipping.")
                 continue
@@ -120,23 +264,29 @@ class Program:
                     f"Warning: Instruction '{instruction}' is not recognized. Skipping.")
                 continue
 
+            # Validate cost
+            cost = float(parts[1]) if len(parts) >= 2 else 0.0
+
             # Validate duration
-            duration = float(parts[1]) if len(parts) == 2 else 0.0
+            duration = float(parts[2]) if len(parts) == 3 else 0.0
+            duration_in_seconds = duration / 1000.0
 
             # Build new Operation object (copy to avoid mutating registry)
             registry_op = _OPERATION_REGISTRY[instruction]
             new_op = Operation(
-                name=registry_op.name, instruction=registry_op.instruction, cost=registry_op.cost)
-            new_op.duration = duration
+                name=registry_op.name,
+                instruction=registry_op.instruction,
+            )
+            new_op.cost = cost
+            new_op.duration = duration_in_seconds
 
-            # Number of simulation steps needed to complete the operation
-            # Value is rounded to the nearest integer
-            new_op.t_steps_needed = new_op.get_t_steps_needed(t_step)
-
-            if instruction == "ACTIVE":
-                new_op.cost = self.CPU_ACTIVE_COST
-            elif instruction == "STANDBY":
-                new_op.cost = self.CPU_STANDBY_COST
+            # Get PROCESSING_CLOCK ticks needed to execute based on duration
+            # TODO: Process instructions of unknown duration
+            if duration_in_seconds > 0:
+                new_op.ticks_needed = math.ceil(
+                    duration_in_seconds / self.PROCESSING_CLOCK)
+            else:
+                new_op.unknown_duration = True
 
             # Append Operation object to the list
             operations.append(new_op)

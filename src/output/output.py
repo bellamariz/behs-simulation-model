@@ -13,6 +13,12 @@ def write_to_log(sim_output):
                 f"  Supply: type={data['supply']['type']}, energy={data['supply']['energy_supply']:.7f}J, power={data['supply']['power_supply']:.7f}W", file=logfile)
             print(
                 f"  Load: type={data['load']['type']}, status={data['load']['mode']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.7f}A, energy={data['load']['energy_consumed']:.7f}J, total_energy_consumed={data['load']['total_energy_consumed']:.7f}J", file=logfile)
+            if data['load']['program_executed_ops']:
+                ops_str = ", ".join(
+                    f"{instruct}:{secs:.4f}s"
+                    for instruct, secs in data['load']['program_executed_ops'].items()
+                )
+                print(f"  Program: ops=[{ops_str}]", file=logfile)
             if 'pmic' in data:
                 print(
                     f"  PMIC: type={data['pmic']['type']}, status={data['pmic']['status']}, v_out={data['pmic']['vout']:.5f}V, vbat_ok={data['pmic']['vbat_ok']}, energy_to_storage={data['pmic']['energy_to_storage']:.7f}J, energy_from_storage={data['pmic']['energy_from_storage']:.7f}J", file=logfile)
@@ -25,11 +31,18 @@ def write_to_log(sim_output):
 def write_to_csv(sim_output):
     with open("output.csv", "w", newline="", encoding="utf-8") as csvfile:
         fieldnames = ["step", "time", "component", "status", "voltage", "current",
-                      "energy", "power", "total_energy_consumed"]
+                      "energy", "power", "total_energy_consumed", "program_executed_ops"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
         for t, data in sim_output.items():
+            program_executed_ops = "NaN"
+            if data['load']['program_executed_ops']:
+                program_executed_ops = ",".join(
+                    f"{instruct}:{secs:.4f}s"
+                    for instruct, secs in data['load']['program_executed_ops'].items()
+                )
+
             writer.writerow({
                 "step": t,
                 "time": t,
@@ -40,6 +53,7 @@ def write_to_csv(sim_output):
                 "power": data['supply']['power_supply'],
                 "energy": data['supply']['energy_supply'],
                 "total_energy_consumed": "NaN",
+                "program_executed_ops": program_executed_ops,
             })
             writer.writerow({
                 "step": t,
@@ -51,6 +65,7 @@ def write_to_csv(sim_output):
                 "power": data['storage']['power_stored'],
                 "energy": data['storage']['energy_stored'],
                 "total_energy_consumed": "NaN",
+                "program_executed_ops": program_executed_ops,
             })
             writer.writerow({
                 "step": t,
@@ -61,13 +76,14 @@ def write_to_csv(sim_output):
                 "current": data['load']['current'],
                 "power": "NaN",
                 "energy": data['load']['energy_consumed'],
-                "total_energy_consumed": data['load']['total_energy_consumed']
+                "total_energy_consumed": data['load']['total_energy_consumed'],
+                "program_executed_ops": program_executed_ops,
             })
 
 
 # Main function to write the output of the simulation to an Excel file
 def write_to_excel():
-    df = pd.read_csv("output.csv")
+    df = pd.read_csv("output.csv", dtype={"program_executed_ops": str})
     df.to_excel("output.xlsx", index=False, na_rep="NaN")
 
 
