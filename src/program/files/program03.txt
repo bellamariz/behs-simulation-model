@@ -1,0 +1,18 @@
+# Operations are grouped within a task, so execution starts only if there's enough energy to complete it.
+# It never executes a task it cannot complete.
+#
+##ENERGY_MONIT:TASK_AWARE
+TASK:receive
+  RX      0.027     102.5
+  PROC    0.00192   1
+END_TASK
+SLEEP   0.000001  30000
+TASK:sense
+  SENSE   0.006     44
+  PROC    0.00192   1
+END_TASK
+SLEEP   0.000001  30000
+TASK:send
+  TX      0.03      1
+END_TASK
+SLEEP   0.000001  60000

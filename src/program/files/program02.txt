@@ -1,0 +1,16 @@
+# The program monitors the energy levels between the storage and the load.
+# It pauses execution on the WAIT_VSTOR operation, and only continues
+# if the storage voltage is above the voltage threshold set for WAIT_VSTOR (third paremeter).
+# For WAIT_VSTOR, the third parameter is not its duration, but the voltage threshold in Volts.
+# Duration for these operations are unknown, it depends on the energy values.
+#
+##ENERGY_MONIT:ENERGY_AWARE
+WAIT_VSTOR   0.0002     3.5V  
+RX           0.027     102.5
+PROC         0.00192   1
+SLEEP        0.000001  60000
+WAIT_VSTOR   0.0002     3.5V   
+SENSE        0.006     44
+PROC         0.00192   1
+WAIT_VSTOR   0.0002     3.5V  
+TX           0.03      1

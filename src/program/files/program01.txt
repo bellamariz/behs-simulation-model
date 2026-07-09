@@ -1,3 +1,9 @@
+# No energy check or program state saving. 
+# The program runs while there is energy to execute it. 
+# If there is a power outage, execution halts and data is lost.
+# The program starts from the beginning when there is enough power.
+#
+##ENERGY_MONIT:NONE
 RX      0.027     102.5
 PROC    0.00192   1
 SLEEP   0.000001  60000
