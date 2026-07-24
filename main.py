@@ -1,8 +1,7 @@
 import src.simulator.simulator as simulator
 import src.output.output as out
 import src.input.input as inp
-import src.interface.interface as ui
-import src.eh.eh as eh
+import src.ui.ui as ui
 from tkinter import messagebox
 
 
