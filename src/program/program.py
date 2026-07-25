@@ -18,9 +18,9 @@ class Operation:
     def __init__(self, name: str, instruction: str):
         self.name = name
         self.instruction = instruction
-        self.cost = 0.0  # consumption current cost (for given duration)
-        self.duration = 0.0  # duration in milliseconds
-        self.ticks_needed = 0  # duration parsed to PROCESSING_CLOCK ticks
+        self.cost = 0.0  # consumption current cost (in Amp)
+        self.duration = 0.0  # duration (in milliseconds)
+        self.ticks_needed = 0  # duration (in PROCESSING_CLOCK ticks)
         self.unknown_duration = False  # True if duration is unknown
 
 
@@ -34,6 +34,7 @@ _OPERATION_REGISTRY = {
     "SENSE": Operation(name="sensing", instruction="SENSE"),
     "TX": Operation(name="transmitting", instruction="TX"),
     "RX": Operation(name="receiving", instruction="RX"),
+    "WAIT_VSTOR": Operation(name="checking_stor_energy", instruction="WAIT_VSTOR"),
 }
 
 
@@ -50,8 +51,9 @@ class Program:
         self.TICK_MODEL = tick_model
         self.PROCESSING_CLOCK = processing_clock
 
-        operations_from_file = self._parse_program_file(filepath)
-        self.operations = self._parse_operations(operations_from_file)
+        operations, energy_monit = self._parse_program_file(filepath)
+        self.operations = self._parse_operations(operations)
+        self.energy_monitor = energy_monit
 
         # Tracks elapsed seconds per instruction during the last t_step
         # Format: {instruction: elapsed_seconds}
@@ -69,7 +71,7 @@ class Program:
     def print(self):
         print(f"=== Program to be executed: {self.FILEPATH} ===")
         print(
-            f"processing_clock={self.PROCESSING_CLOCK}, tick_model={self.TICK_MODEL}")
+            f"processing_clock={self.PROCESSING_CLOCK}, energy_monitor={self.energy_monitor}, tick_model={self.TICK_MODEL}")
         print("operations=")
         self.print_operations()
 
@@ -241,10 +243,27 @@ class Program:
                 self.current_op_remaining_ticks = op.ticks_needed
                 return
 
-    # Read program file
-    def _parse_program_file(self, filepath: str) -> list[str]:
+    # Read program file, skipping comment lines
+    def _parse_program_file(self, filepath: str) -> tuple[list[str], str]:
+        lines = []
+        energy_monit = ""
         with open(filepath, 'r') as file:
-            return [line.strip() for line in file if line.strip()]
+            for line in file:
+                # Get line
+                l = line.strip()
+
+                # Skip comments and blank lines
+                if l == "" or l.startswith("#"):
+                    continue
+                # Get energy monitoring info if present
+                elif l.startswith("//ENERGY_MONIT"):
+                    energy_monit = l[2:].split(":")[1]
+                    continue
+
+                # Append line to list of operations otherwise
+                lines.append(l)
+
+        return lines, energy_monit
 
     # Parse the program file and create a list of Operation objects
     def _parse_operations(self, operations_from_file: list[str]) -> list[Operation]:
