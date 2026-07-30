@@ -3,8 +3,6 @@
 # if the storage voltage is above the voltage threshold set (v_thresh).
 # Example from Related Works: Mementos, Hibernus, Hibernus++
 
-//MODEL:CHECKPOINTING
-
 RX      0.027     102.5
 PROC    0.00192   1
 SLEEP   0.000001  60000

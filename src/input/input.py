@@ -5,6 +5,7 @@ import src.behs.load as load
 import src.behs.pmic as pmic
 from src.eh import eh
 import src.program.program as program
+import src.interface.interface as interface
 
 CONFIG_FILE_PATH = "src/input/files/config-complete-pmic.json"
 
@@ -24,6 +25,12 @@ _LOAD_REGISTRY = {
 
 _PMIC_REGISTRY = {
     "boost_buck": pmic.BoostBuckPMIC,
+}
+
+_INTERFACE_REGISTRY = {
+    "basic": interface.Basic,
+    "hibernus": interface.Hibernus,
+    "ufop": interface.UFoP,
 }
 
 _UPLOAD_SOFTWARE_REGISTRY = ["mcu"]
@@ -64,6 +71,7 @@ class Input:
         self._init_simulation_params(config)
         self._init_behs_params(config)
         if self.load.type in _UPLOAD_SOFTWARE_REGISTRY:
+            self._init_interface_params(config)
             self._init_program_params(config)
 
     # Initialize simulation parameters
@@ -114,6 +122,14 @@ class Input:
                 raise ValueError(f"Unsupported PMIC type: {pmic_type!r}")
             self.pmic = _PMIC_REGISTRY[pmic_type](pmic_cfg)
 
+    def _init_interface_params(self, config: dict):
+        interface_cfg = config.get("interface")
+        if interface_cfg is None:
+            print("Warning: No interface provided, using default 'basic' interface.")
+            interface_cfg = "basic"
+
+        self.interface = _INTERFACE_REGISTRY[interface_cfg]()
+
     def _init_program_params(self, config: dict):
         program_cfg = config.get("program")
         if program_cfg is None:
@@ -141,6 +157,6 @@ class Input:
 
         # Parse Program object from file and upload to the Load
         prog = program.Program(
-            program_file, cpu_active_cost, cpu_standby_cost, program_clock)
+            program_file, self.interface, cpu_active_cost, cpu_standby_cost, program_clock)
         prog.print()
         self.load.upload_software(prog)

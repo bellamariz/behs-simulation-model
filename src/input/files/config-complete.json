@@ -24,6 +24,8 @@
     }
   },
   "program": {
-    "filepath": "src/program/files/program01.txt"
-  }
+    "filepath": "src/program/files/program01.txt",
+    "processing_clock": 0.001
+  },
+  "interface": "basic"
 }
