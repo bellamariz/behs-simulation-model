@@ -3,7 +3,7 @@
 # If there is a power outage, execution halts and data is lost.
 # The program starts from the beginning when there is enough power.
 
-//ENERGY_MONIT:NONE
+//MODEL:NONE
 
 RX      0.027     102.5
 PROC    0.00192   1
