@@ -96,9 +96,9 @@ class Program:
     #   - the operation cost;
     # Starts Program again if all operations are exhausted before t_step is complete.
     def get_cost_for_t_step(self, t_step: float) -> float:
-        if self.TICK_MODEL == CLOCK_TICK_MODEL_FLOAT:
-            return self._get_cost_float(t_step)
-        return self._get_cost_integer(t_step)
+        if self.TICK_MODEL == CLOCK_TICK_MODEL_INTEGER:
+            return self._get_cost_integer(t_step)
+        return self._get_cost_float(t_step)
 
     # FLOAT MODEL
     # Within each PROCESSING_CLOCK tick,
