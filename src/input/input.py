@@ -106,6 +106,7 @@ class Input:
         self.load = _LOAD_REGISTRY[load_type](load_cfg)
 
         # PMIC (if applicable)
+        self.pmic = None
         pmic_cfg = config.get("pmic")
         if pmic_cfg is not None:
             pmic_type = pmic_cfg.get("type")
