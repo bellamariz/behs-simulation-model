@@ -65,12 +65,13 @@ _OPERATION_REGISTRY = {
 # It reads the program file and loads the operations and their duration
 # Execution advances each PROCESSING_CLOCK, allowing multiple operations per simulation time step.
 class Program:
-    def __init__(self, filepath: str, interface: "Interface", cpu_active_cost: float,
-                 cpu_standby_cost: float, processing_clock: float, tick_model: str = CLOCK_TICK_MODEL_FLOAT):
+    def __init__(self, filepath: str, interface: "Interface", cpu_active_cost: float, cpu_standby_cost: float,
+                 cpu_shutdown_cost: float, processing_clock: float, tick_model: str = CLOCK_TICK_MODEL_FLOAT):
 
         self.FILEPATH = filepath
         self.CPU_ACTIVE_COST = cpu_active_cost
         self.CPU_STANDBY_COST = cpu_standby_cost
+        self.CPU_SHUTDOWN_COST = cpu_shutdown_cost
         self.TICK_MODEL = tick_model
         self.PROCESSING_CLOCK = processing_clock
 
@@ -94,7 +95,7 @@ class Program:
     def print(self):
         print(f"=== Program to be executed: {self.FILEPATH} ===")
         print(
-            f"processing_clock={self.PROCESSING_CLOCK}, tick_model={self.TICK_MODEL}, interface={self.interface.name}, program_model={self.interface.program_model}")
+            f"processing_clock={self.PROCESSING_CLOCK}, tick_model={self.TICK_MODEL}, interface={self.interface.name}, program_model={self.interface.program_execution_model}")
         print("operations=")
         self.print_operations()
 
@@ -118,10 +119,15 @@ class Program:
     #   - the CPU mode cost (standby or active);
     #   - the operation cost;
     # Starts Program again if all operations are exhausted before t_step is complete.
-    def get_cost_for_t_step(self, t_step: float) -> float:
+    def get_cost_for_t_step(self, t_step: float, v_supply: float) -> float:
         if self.TICK_MODEL == CLOCK_TICK_MODEL_INTEGER:
-            return self.interface.program_get_cost_integer(t_step, self)
-        return self.interface.program_get_cost_float(t_step, self)
+            return self.interface.program_get_cost_integer(t_step, v_supply, self)
+        return self.interface.program_get_cost_float(t_step, v_supply, self)
+
+    # Returns True if the Program has a CHECKPOINT operation.
+    # It allows saving state and resuming execution after a power loss.
+    def has_checkpoint(self) -> bool:
+        return any(op.instruction == "CHECKPOINT" for op in self.operations)
 
     # Read program file, skipping comment lines
     def _parse_program_file(self, filepath: str) -> list[str]:
