@@ -7,7 +7,7 @@ from src.eh import eh
 import src.program.program as program
 import src.interface.interface as interface
 
-CONFIG_FILE_PATH = "src/input/files/config-complete-pmic.json"
+CONFIG_FILE_PATH = "src/input/files/config.json"
 
 _SUPPLY_REGISTRY = {
     "constant": supply.ConstantSupply,
@@ -154,9 +154,10 @@ class Input:
         load_cfg = config.get("load")
         cpu_active_cost = load_cfg.get("modes").get("active").get("cost")
         cpu_standby_cost = load_cfg.get("modes").get("standby").get("cost")
+        cpu_shutdown_cost = load_cfg.get("modes").get("shutdown").get("cost")
 
         # Parse Program object from file and upload to the Load
         prog = program.Program(
-            program_file, self.interface, cpu_active_cost, cpu_standby_cost, program_clock)
+            program_file, self.interface, cpu_active_cost, cpu_standby_cost, cpu_shutdown_cost, program_clock)
         prog.print()
         self.load.upload_software(prog)
