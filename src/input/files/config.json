@@ -13,20 +13,6 @@
     "capacitance": 0.047,
     "v_oper_max": 5.5
   },
-  "pmic": {
-    "type": "boost_buck",
-    "v_in_cold_start": 0.6,
-    "v_boost_thresh": 1.8,
-    "v_bat_ov": 5.5,
-    "v_bat_uv": 1.8,
-    "v_bat_ok_low": 3.2,
-    "v_bat_ok_high": 5.2,
-    "v_out_reg": 3.0,
-    "mppt_efficiency": 0.95,
-    "boost_efficiency": 0.80,
-    "buck_efficiency": 0.90,
-    "cold_start_efficiency": 0.50
-  },
   "load": {
     "type": "mcu",
     "v_min": 1.8,
@@ -34,11 +20,11 @@
     "modes": {
       "shutdown": { "cost": 0.0000003, "v_oper": 2.0 },
       "standby": { "cost": 0.000001, "v_oper": 2.2 },
-      "active": { "cost": 0.00192, "v_oper": 3.0 }
+      "active": { "cost": 0.001920, "v_oper": 3.0 }
     }
   },
   "program": {
-    "filepath": "src/program/files/program02.txt",
+    "filepath": "src/program/files/program02-v2.txt",
     "processing_clock": 0.005
   },
   "interface": "mementos"
