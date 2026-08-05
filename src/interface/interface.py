@@ -138,9 +138,6 @@ class Interface(ABC):
 
     @abstractmethod
     def program_reset(self, prog: "Program"):
-        if self.program_saves_state:
-            return
-
         prog.current_op_index = 0
         prog.current_op_remaining_ticks = 0
         prog.current_op_remaining_seconds = 0.0
@@ -216,6 +213,7 @@ class Mementos(Interface):
         # Verify if the Program started to execute a CHECKPOINT instruction
         self._execute_checkpoint = False
         self._is_snapshot_saved = False
+        self._snapshot = self.Snapshot()
 
     def program_get_cost_float(self, t_step: float, v_supply: float, prog: "Program") -> float:
         # Determine how many PROCESSING_CLOCK ticks fit in this t_step
@@ -342,7 +340,10 @@ class Mementos(Interface):
                 return
 
     def program_reset(self, prog: "Program"):
-        super().program_reset(prog)
+        prog.current_op_index = 0
+        prog.current_op_remaining_ticks = 0
+        prog.current_op_remaining_seconds = 0.0
+        prog.executed_ops_last_step = {}
 
     def program_manage_execution(self, v_supply, t_step, prog, load_mode_last, load_mode_from_supply):
         if not prog.has_checkpoint():
@@ -364,19 +365,43 @@ class Mementos(Interface):
                     cost += self.INTERNAL_ADC_COST_ACTIVE
                     prog.executed_ops_last_step["ADC_POLLING"] = 0.0
 
-                    # Validate energy levels against the V_THRESHOLD
+                    # Monitor energy to see if it is equal or below V_THRESHOLD
+                    # If yes, energy supply is scarce and we must save program state to NVM
                     if v_supply <= self.V_THRESHOLD:
-                        # Save program state to FRAM
-                        self._is_snapshot_saved = True
+                        # Log the SAVE_STATE action
                         prog.executed_ops_last_step["SAVE_STATE"] = 0.0
+
+                        # Take a snapshot of the current Program state
+                        self._is_snapshot_saved = True
+                        self._snapshot.save(
+                            prog.current_op_index,
+                            prog.current_op_remaining_ticks,
+                            prog.current_op_remaining_seconds,
+                            prog.executed_ops_last_step
+                        )
+
+                        # Update cost to include the NVM write cost
                         cost += self.FRAM_COST_ACTIVE
                 else:
-                    # Restore program state from FRAM
+                    # If a Program snapshot was saved and energy is above V_THRESHOLD
                     if self._is_snapshot_saved and v_supply > self.V_THRESHOLD:
-                        self._is_snapshot_saved = False
+                        # Restore the Program state from the snapshot
+                        prog.current_op_index = self._snapshot.curr_op_index
+                        prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
+                        prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
+                        prog.executed_ops_last_step = self._snapshot.exec_ops_last_step.copy()
+
+                        # Log the RESTORE_STATE action
                         prog.executed_ops_last_step["RESTORE_STATE"] = 0.0
+
+                        # Clear the snapshot
+                        self._is_snapshot_saved = False
+                        self._snapshot.restore()
+
+                        # Update cost to include the NVM read cost
                         cost += self.FRAM_COST_ACTIVE
         else:
+            # No log of executed operations when Load is not active
             prog.executed_ops_last_step = {}
             if load_mode_from_supply == "standby":
                 # Get cost for standby mode
@@ -388,6 +413,25 @@ class Mementos(Interface):
 
     def print(self):
         super().print()
+
+    class Snapshot:
+        def __init__(self):
+            self.curr_op_index = 0
+            self.curr_op_remaining_ticks = 0
+            self.curr_op_remaining_seconds = 0.0
+            self.exec_ops_last_step = {}
+
+        def save(self, index: int, remaining_ticks: int, remaining_seconds: float, exec_ops_last: dict[str, float]):
+            self.curr_op_index = index
+            self.curr_op_remaining_ticks = remaining_ticks
+            self.curr_op_remaining_seconds = remaining_seconds
+            self.exec_ops_last_step = exec_ops_last.copy()
+
+        def restore(self):
+            self.curr_op_index = 0
+            self.curr_op_remaining_ticks = 0
+            self.curr_op_remaining_seconds = 0.0
+            self.exec_ops_last_step.clear()
 
 
 class UFoP(Interface):
