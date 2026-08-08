@@ -1,6 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
+from src.interface.snapshot import Snapshot
 
 if TYPE_CHECKING:
     from src.program.program import Program
@@ -195,6 +196,8 @@ class Basic(Interface):
         super().print()
 
 
+# Class Mementos is a hardware-software Interface based on the following paper
+# Source: https://dl.acm.org/doi/10.1145/1961295.1950386
 class Mementos(Interface):
     def __init__(self):
         self.name = "Mementos"
@@ -203,17 +206,17 @@ class Mementos(Interface):
         self.program_execution_model = "CHECKPOINTING"
         self.program_saves_state = True
 
-        # NOTE: values based on the TI MSP430FR59xx MCU specs
+        # NOTE: ADC and NVM value(s) based on the TI MSP430FR59xx MCU specs
         self.INTERNAL_ADC_COST_ACTIVE = 0.000245
         self.INTERNAL_ADC_COST_STANDBY = 0.000165
-        self.FRAM_COST_ACTIVE = 0.002265  # 50% cache hit
-        self.FRAM_COST_STANDBY = 0.001070
+        self.NVM_COST_ACTIVE = 0.002265  # 50% cache hit (FRAM)
+        self.NVM_COST_STANDBY = 0.001070
         self.V_THRESHOLD = 3.2
 
         # Verify if the Program started to execute a CHECKPOINT instruction
         self._execute_checkpoint = False
         self._is_snapshot_saved = False
-        self._snapshot = self.Snapshot()
+        self._snapshot = Snapshot()
 
     def program_get_cost_float(self, t_step: float, v_supply: float, prog: "Program") -> float:
         # Determine how many PROCESSING_CLOCK ticks fit in this t_step
@@ -340,12 +343,7 @@ class Mementos(Interface):
                 return
 
     def program_reset(self, prog: "Program"):
-        prog.current_op_index = 0
-        prog.current_op_remaining_ticks = 0
-        prog.current_op_remaining_seconds = 0.0
-        prog.executed_ops_last_step = {}
-        # TODO: Check if this next line is necessary
-        prog.get_next_valid_op()
+        super().program_reset(prog)
 
     def program_manage_execution(self, v_supply, t_step, prog, load_mode_last, load_mode_from_supply):
         if not prog.has_checkpoint():
@@ -353,109 +351,56 @@ class Mementos(Interface):
                                                     prog, load_mode_last, load_mode_from_supply)
 
         cost = 0.0
+        # If a Program snapshot was saved and Load is on active mode
+        if self._is_snapshot_saved and load_mode_from_supply == "active":
+            # Restore Program state from snapshot
+            prog.current_op_index = self._snapshot.curr_op_index
+            prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
+            prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
+            prog.executed_ops_last_step = {}
+
+            # Reset snapshot - erased upon restore
+            self._is_snapshot_saved = False
+            self._snapshot.restore()
+
+            # Add cost of NVM read and log it
+            nvm_cost = self.NVM_COST_ACTIVE if load_mode_last == "active" else self.NVM_COST_STANDBY
+            cost += nvm_cost
+            prog.executed_ops_last_step["RESTORE_STATE"] = prog.PROCESSING_CLOCK
+
+            # Continue Program execution normally
+            prog.get_next_valid_op()
+
+            return "active", cost
+
+        # If no snapshot was saved, but Load is on active mode
         if load_mode_from_supply == "active":
-            # If Load is in active mode and last mode was also active
-            if load_mode_last == "active":
-                # If a Program snapshot was saved
-                if self._is_snapshot_saved:
-                    # Clear previous step ops to avoid stale labels while program is paused.
-                    prog.executed_ops_last_step = {}
+            # Execute Program normally
+            cost += prog.get_cost_for_t_step(t_step, v_supply)
 
-                    # Add cost of energy monitoring device (ADC) and log it
-                    cost += self.INTERNAL_ADC_COST_ACTIVE
-                    prog.executed_ops_last_step["ADC_POLLING"] = 0.0
+            # If current operation is a CHECKPOINT
+            if self._execute_checkpoint:
+                self._execute_checkpoint = False
 
-                    # If energy supply is above V_THRESHOLD, restore Program state from snapshot
-                    if v_supply > self.V_THRESHOLD:
-                        # Restore the Program state from the snapshot
-                        prog.current_op_index = self._snapshot.curr_op_index
-                        prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
-                        prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
-                        prog.executed_ops_last_step = self._snapshot.exec_ops_last_step.copy()
+                # Add cost of active energy monitoring device (ADC) and log it
+                cost += self.INTERNAL_ADC_COST_ACTIVE
+                prog.executed_ops_last_step["ADC_POLLING"] = prog.PROCESSING_CLOCK
 
-                        # Clear the snapshot
-                        self._is_snapshot_saved = False
-                        self._snapshot.restore()
+                # If supply <= V_THRESHOLD, save the Program state as a snapshot to NVM
+                if v_supply < self.V_THRESHOLD:
+                    # Add cost of NVM write and log it
+                    cost += self.NVM_COST_ACTIVE
+                    prog.executed_ops_last_step["SAVE_STATE"] = prog.PROCESSING_CLOCK
 
-                        # Add cost of NVM read and log it
-                        cost += self.FRAM_COST_ACTIVE
-                        prog.executed_ops_last_step["RESTORE_STATE"] = 0.0
-                        # TODO: Check if this line is necessary
-                        prog.get_next_valid_op()
-
-                        # TODO: Check if this line is necessary
-                        # cost = prog.get_cost_for_t_step(t_step, v_supply)
-                    else:
-                        # If energy is still below V_THRESHOLD, we do nothing
-                        # CPU is active, but idle
-                        cost += prog.CPU_ACTIVE_COST
-                else:
-                    # If no snapshot was saved, execute program normally
-                    cost += prog.get_cost_for_t_step(t_step, v_supply)
-
-                # If current operation is a CHECKPOINT
-                if self._execute_checkpoint:
-                    # Reset the flag for executing a CHECKPOINT operation
-                    self._execute_checkpoint = False
-
-                    # Add cost of energy monitoring device (ADC) and log it
-                    cost += self.INTERNAL_ADC_COST_ACTIVE
-                    prog.executed_ops_last_step["ADC_POLLING"] = 0.0
-
-                    # Monitor energy to see if it is equal or below V_THRESHOLD
-                    # If yes, energy supply is scarce and we must save program state to NVM
-                    if v_supply <= self.V_THRESHOLD:
-                        # Add cost of NVM write and log it
-                        cost += self.FRAM_COST_ACTIVE
-                        prog.executed_ops_last_step["SAVE_STATE"] = 0.0
-
-                        # Take a snapshot of the current Program state
-                        self._is_snapshot_saved = True
-                        self._snapshot.save(
-                            prog.current_op_index,
-                            prog.current_op_remaining_ticks,
-                            prog.current_op_remaining_seconds,
-                            prog.executed_ops_last_step
-                        )
-            else:
-                # If a Program snapshot was saved
-                if self._is_snapshot_saved:
-                    # Clear previous step ops to avoid stale labels while program is paused.
-                    prog.executed_ops_last_step = {}
-
-                    # Add cost of energy monitoring device (ADC) and log it
-                    cost += self.INTERNAL_ADC_COST_ACTIVE
-                    prog.executed_ops_last_step["ADC_POLLING"] = 0.0
-
-                    # If energy supply is above V_THRESHOLD, restore Program state from snapshot
-                    if v_supply > self.V_THRESHOLD:
-                        # Restore the Program state from the snapshot
-                        prog.current_op_index = self._snapshot.curr_op_index
-                        prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
-                        prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
-                        prog.executed_ops_last_step = self._snapshot.exec_ops_last_step.copy()
-
-                        # Clear the snapshot
-                        self._is_snapshot_saved = False
-                        self._snapshot.restore()
-
-                        # Add cost of NVM read and log it
-                        cost += self.FRAM_COST_ACTIVE
-                        prog.executed_ops_last_step["RESTORE_STATE"] = 0.0
-                        # TODO: Check if this line is necessary
-                        prog.get_next_valid_op()
-
-                        # TODO: Check if this line is necessary
-                        # cost = prog.get_cost_for_t_step(t_step, v_supply)
-                    else:
-                        # If energy is still below V_THRESHOLD, we do nothing
-                        # CPU is active, but idle
-                        cost += prog.CPU_ACTIVE_COST
-                else:
-                    # If no snapshot was saved, execute program normally
-                    cost += prog.get_cost_for_t_step(t_step, v_supply)
+                    # Save a snapshot of Program state to NVM
+                    self._is_snapshot_saved = True
+                    self._snapshot.save(
+                        prog.current_op_index,
+                        prog.current_op_remaining_ticks,
+                        prog.current_op_remaining_seconds,
+                        prog.executed_ops_last_step
+                    )
         else:
-            # No log of executed operations when Load is not active
             prog.executed_ops_last_step = {}
             if load_mode_from_supply == "standby":
                 # Get cost for standby mode
@@ -468,26 +413,9 @@ class Mementos(Interface):
     def print(self):
         super().print()
 
-    class Snapshot:
-        def __init__(self):
-            self.curr_op_index = 0
-            self.curr_op_remaining_ticks = 0
-            self.curr_op_remaining_seconds = 0.0
-            self.exec_ops_last_step = {}
 
-        def save(self, index: int, remaining_ticks: int, remaining_seconds: float, exec_ops_last: dict[str, float]):
-            self.curr_op_index = index
-            self.curr_op_remaining_ticks = remaining_ticks
-            self.curr_op_remaining_seconds = remaining_seconds
-            self.exec_ops_last_step = exec_ops_last.copy()
-
-        def restore(self):
-            self.curr_op_index = 0
-            self.curr_op_remaining_ticks = 0
-            self.curr_op_remaining_seconds = 0.0
-            self.exec_ops_last_step.clear()
-
-
+# Class Hibernus is a hardware-software Interface based on the following paper
+# https://ieeexplore.ieee.org/document/6960060
 class Hibernus(Interface):
     def __init__(self):
         self.name = "Hibernus"
@@ -496,17 +424,14 @@ class Hibernus(Interface):
         self.program_execution_model = "CHECKPOINTING"
         self.program_saves_state = True
 
-        # VH: hibernate when v_supply < V_THRESH_HIBERNATE
-        # VR: restore when v_supply > V_THRESH_RESTORE
+        # NOTE: NVM value(s) based on the TI MSP430FR59xx MCU specs
+        self.NVM_COST_ACTIVE = 0.002265  # 50% cache hit (FRAM)
         self.V_THRESH_HIBERNATE = 3.2
         self.V_THRESH_RESTORE = 3.3
 
-        # NOTE: values based on the TI MSP430FR59xx MCU specs
-        self.FRAM_COST_ACTIVE = 0.002265  # 50% cache hit
-
         self._is_hibernating = False
         self._is_snapshot_saved = False
-        self._snapshot = self.Snapshot()
+        self._snapshot = Snapshot()
 
     def program_get_cost_float(self, t_step: float, v_supply: float, prog: "Program") -> float:
         return super().program_get_cost_float(t_step, v_supply, prog)
@@ -542,7 +467,7 @@ class Hibernus(Interface):
                 prog.executed_ops_last_step = self._snapshot.exec_ops_last_step.copy()
 
                 # Add cost of NVM read and log it
-                cost += self.FRAM_COST_ACTIVE
+                cost += self.NVM_COST_ACTIVE
                 prog.executed_ops_last_step["RESTORE_STATE"] = 0.0
 
                 # Resume normal execution
@@ -578,7 +503,7 @@ class Hibernus(Interface):
                 self._is_hibernating = True
 
                 # Account for NVM write and transition to low-power state.
-                cost += self.FRAM_COST_ACTIVE
+                cost += self.NVM_COST_ACTIVE
                 return "shutdown", cost + prog.CPU_SHUTDOWN_COST
 
             #  If v_supply > V_THRESH_HIBERNATE, execute program normally
@@ -595,26 +520,10 @@ class Hibernus(Interface):
     def print(self):
         super().print()
 
-    class Snapshot:
-        def __init__(self):
-            self.curr_op_index = 0
-            self.curr_op_remaining_ticks = 0
-            self.curr_op_remaining_seconds = 0.0
-            self.exec_ops_last_step = {}
 
-        def save(self, index: int, remaining_ticks: int, remaining_seconds: float, exec_ops_last: dict[str, float]):
-            self.curr_op_index = index
-            self.curr_op_remaining_ticks = remaining_ticks
-            self.curr_op_remaining_seconds = remaining_seconds
-            self.exec_ops_last_step = exec_ops_last.copy()
-
-        def restore(self):
-            self.curr_op_index = 0
-            self.curr_op_remaining_ticks = 0
-            self.curr_op_remaining_seconds = 0.0
-            self.exec_ops_last_step.clear()
-
-
+# TODO: Implement UFoP Interface
+# Class UFoP is a hardware-software Interface based on the following paper
+# https://dl.acm.org/doi/10.1145/2809695.2809707
 class UFoP(Interface):
     def __init__(self):
         self.name = "UFoP"
