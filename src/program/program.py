@@ -129,6 +129,11 @@ class Program:
     def has_checkpoint(self) -> bool:
         return any(op.instruction == "CHECKPOINT" for op in self.operations)
 
+    # Returns True if the Program has a TASK operation.
+    # It allows saving state and resuming execution after a power loss.
+    def has_task(self) -> bool:
+        return any(op.instruction == "TASK" for op in self.operations)
+
     # Read program file, skipping comment lines
     def _parse_program_file(self, filepath: str) -> list[str]:
         lines = []
