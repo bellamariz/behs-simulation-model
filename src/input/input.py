@@ -61,7 +61,7 @@ def load_config_from_file(filepath: str) -> dict:
 
 
 # Load simulation configuration from UI input values
-# TODO: Update function for latest model changes
+# TODO: Implement configuration input from UI
 def load_config_from_ui(values):
     pass
 
