@@ -174,7 +174,7 @@ class MCU(Load):
             self.mode, self._program_cost = self.program.interface.program_manage_execution(
                 v_supply, t_step, self.program, self.mode, mode_from_supply)
 
-            if self.mode not in ["active", "standby"]:
+            if self.mode != "active":
                 self.program.reset()
         else:
             self.mode = mode_from_supply
