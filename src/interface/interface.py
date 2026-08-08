@@ -364,7 +364,7 @@ class Mementos(Interface):
             self._snapshot.restore()
 
             # Add cost of NVM read and log it
-            cost += self._nvm_cost_for_mode(load_mode_last)
+            cost += self._nvm_cost_for_mode(load_mode_from_supply)
             prog.executed_ops_last_step["RESTORE_STATE"] = 0.001
 
             # Continue Program execution normally
@@ -382,13 +382,13 @@ class Mementos(Interface):
                 self._execute_checkpoint = False
 
                 # Add cost of energy monitoring device (ADC) and log it
-                cost += self._adc_cost_for_mode(load_mode_last)
+                cost += self._adc_cost_for_mode(load_mode_from_supply)
                 prog.executed_ops_last_step["ADC_POLLING"] = 0.001
 
                 # If supply <= V_THRESHOLD, save the Program state as a snapshot to NVM
                 if v_supply <= self.V_THRESHOLD:
                     # Add cost of NVM write and log it
-                    cost += self._nvm_cost_for_mode(load_mode_last)
+                    cost += self._nvm_cost_for_mode(load_mode_from_supply)
                     prog.executed_ops_last_step["SAVE_STATE"] = 0.001
 
                     # Save a snapshot of Program state to NVM
