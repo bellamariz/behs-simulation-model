@@ -208,7 +208,7 @@ class Mementos(Interface):
         self.INTERNAL_ADC_COST_STANDBY = 0.000165
         self.FRAM_COST_ACTIVE = 0.002265  # 50% cache hit
         self.FRAM_COST_STANDBY = 0.001070
-        self.V_THRESHOLD = 3.1
+        self.V_THRESHOLD = 3.2
 
         # Verify if the Program started to execute a CHECKPOINT instruction
         self._execute_checkpoint = False
@@ -354,11 +354,46 @@ class Mementos(Interface):
 
         cost = 0.0
         if load_mode_from_supply == "active":
-            # If Load is in active mode and current operation is a CHECKPOINT
+            # If Load is in active mode and last mode was also active
             if load_mode_last == "active":
-                # Get cost for executed operations
-                cost = prog.get_cost_for_t_step(t_step, v_supply)
+                # If a Program snapshot was saved
+                if self._is_snapshot_saved:
+                    # Clear previous step ops to avoid stale labels while program is paused.
+                    prog.executed_ops_last_step = {}
 
+                    # Add cost of energy monitoring device (ADC) and log it
+                    cost += self.INTERNAL_ADC_COST_ACTIVE
+                    prog.executed_ops_last_step["ADC_POLLING"] = 0.0
+
+                    # If energy supply is above V_THRESHOLD, restore Program state from snapshot
+                    if v_supply > self.V_THRESHOLD:
+                        # Restore the Program state from the snapshot
+                        prog.current_op_index = self._snapshot.curr_op_index
+                        prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
+                        prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
+                        prog.executed_ops_last_step = self._snapshot.exec_ops_last_step.copy()
+
+                        # Clear the snapshot
+                        self._is_snapshot_saved = False
+                        self._snapshot.restore()
+
+                        # Add cost of NVM read and log it
+                        cost += self.FRAM_COST_ACTIVE
+                        prog.executed_ops_last_step["RESTORE_STATE"] = 0.0
+                        # TODO: Check if this line is necessary
+                        prog.get_next_valid_op()
+
+                        # TODO: Check if this line is necessary
+                        # cost = prog.get_cost_for_t_step(t_step, v_supply)
+                    else:
+                        # If energy is still below V_THRESHOLD, we do nothing
+                        # CPU is active, but idle
+                        cost += prog.CPU_ACTIVE_COST
+                else:
+                    # If no snapshot was saved, execute program normally
+                    cost += prog.get_cost_for_t_step(t_step, v_supply)
+
+                # If current operation is a CHECKPOINT
                 if self._execute_checkpoint:
                     # Reset the flag for executing a CHECKPOINT operation
                     self._execute_checkpoint = False
@@ -383,29 +418,42 @@ class Mementos(Interface):
                             prog.executed_ops_last_step
                         )
             else:
-                # If a Program snapshot was saved and energy is above V_THRESHOLD
+                # If a Program snapshot was saved
                 if self._is_snapshot_saved:
-                    # Restore the Program state from the snapshot
-                    prog.current_op_index = self._snapshot.curr_op_index
-                    prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
-                    prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
-                    prog.executed_ops_last_step = self._snapshot.exec_ops_last_step.copy()
+                    # Clear previous step ops to avoid stale labels while program is paused.
+                    prog.executed_ops_last_step = {}
 
-                    # Clear the snapshot
-                    self._is_snapshot_saved = False
-                    self._snapshot.restore()
+                    # Add cost of energy monitoring device (ADC) and log it
+                    cost += self.INTERNAL_ADC_COST_ACTIVE
+                    prog.executed_ops_last_step["ADC_POLLING"] = 0.0
 
-                    # Add cost of NVM read and log it
-                    cost += self.FRAM_COST_ACTIVE
-                    prog.executed_ops_last_step["RESTORE_STATE"] = 0.0
-                    # TODO: Check if this line is necessary
-                    prog.get_next_valid_op()
+                    # If energy supply is above V_THRESHOLD, restore Program state from snapshot
+                    if v_supply > self.V_THRESHOLD:
+                        # Restore the Program state from the snapshot
+                        prog.current_op_index = self._snapshot.curr_op_index
+                        prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
+                        prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
+                        prog.executed_ops_last_step = self._snapshot.exec_ops_last_step.copy()
 
-                    # TODO: Check if this line is necessary
-                    # cost = prog.get_cost_for_t_step(t_step, v_supply)
+                        # Clear the snapshot
+                        self._is_snapshot_saved = False
+                        self._snapshot.restore()
+
+                        # Add cost of NVM read and log it
+                        cost += self.FRAM_COST_ACTIVE
+                        prog.executed_ops_last_step["RESTORE_STATE"] = 0.0
+                        # TODO: Check if this line is necessary
+                        prog.get_next_valid_op()
+
+                        # TODO: Check if this line is necessary
+                        # cost = prog.get_cost_for_t_step(t_step, v_supply)
+                    else:
+                        # If energy is still below V_THRESHOLD, we do nothing
+                        # CPU is active, but idle
+                        cost += prog.CPU_ACTIVE_COST
                 else:
                     # If no snapshot was saved, execute program normally
-                    cost = prog.get_cost_for_t_step(t_step, v_supply)
+                    cost += prog.get_cost_for_t_step(t_step, v_supply)
         else:
             # No log of executed operations when Load is not active
             prog.executed_ops_last_step = {}
