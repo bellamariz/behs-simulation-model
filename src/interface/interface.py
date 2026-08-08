@@ -488,6 +488,133 @@ class Mementos(Interface):
             self.exec_ops_last_step.clear()
 
 
+class Hibernus(Interface):
+    def __init__(self):
+        self.name = "Hibernus"
+        self.energy_monitoring_device = "INTERNAL+EXTERNAL"
+        self.energy_monitoring_strategy = "PASSIVE"
+        self.program_execution_model = "CHECKPOINTING"
+        self.program_saves_state = True
+
+        # VH: hibernate when v_supply < V_THRESH_HIBERNATE
+        # VR: restore when v_supply > V_THRESH_RESTORE
+        self.V_THRESH_HIBERNATE = 3.2
+        self.V_THRESH_RESTORE = 3.3
+
+        # NOTE: values based on the TI MSP430FR59xx MCU specs
+        self.FRAM_COST_ACTIVE = 0.002265  # 50% cache hit
+
+        self._is_hibernating = False
+        self._is_snapshot_saved = False
+        self._snapshot = self.Snapshot()
+
+    def program_get_cost_float(self, t_step: float, v_supply: float, prog: "Program") -> float:
+        return super().program_get_cost_float(t_step, v_supply, prog)
+
+    def program_get_cost_integer(self, t_step: float, v_supply: float, prog: "Program") -> int:
+        return super().program_get_cost_integer(t_step, v_supply, prog)
+
+    def program_get_next_valid_op(self, prog: "Program"):
+        super().program_get_next_valid_op(prog)
+
+    def program_reset(self, prog: "Program"):
+        # Clean program execution ops dict when hibernating
+        # It will be restored from Snapshot
+        if self._is_hibernating or self._is_snapshot_saved:
+            prog.executed_ops_last_step = {}
+            return
+
+        super().program_reset(prog)
+
+    def program_manage_execution(self, v_supply, t_step, prog, load_mode_last, load_mode_from_supply):
+        cost = 0.0
+
+        # If a Program snapshot was saved
+        if self._is_snapshot_saved:
+            prog.executed_ops_last_step = {}
+
+            # If active mode, and v_supply > V_THRESH_RESTORE
+            if load_mode_from_supply == "active" and v_supply >= self.V_THRESH_RESTORE:
+                # Restore the Program state from the snapshot
+                prog.current_op_index = self._snapshot.curr_op_index
+                prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
+                prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
+                prog.executed_ops_last_step = self._snapshot.exec_ops_last_step.copy()
+
+                # Add cost of NVM read and log it
+                cost += self.FRAM_COST_ACTIVE
+                prog.executed_ops_last_step["RESTORE_STATE"] = 0.0
+
+                # Resume normal execution
+                self._is_hibernating = False
+                self._is_snapshot_saved = False
+                self._snapshot.restore()
+
+                # Get next valid operation
+                prog.get_next_valid_op()
+
+                return "active", cost
+
+            # While hibernating, load should be on standby mode
+            self._is_hibernating = True
+            prog.executed_ops_last_step["HIBERNATE"] = 0.0
+            return "standby", prog.CPU_STANDBY_COST
+
+        # If no snapshot was saved
+        if load_mode_from_supply == "active":
+            # If v_supply <= V_THRESH_HIBERNATE, save Program snapshot
+            if v_supply <= self.V_THRESH_HIBERNATE:
+                prog.executed_ops_last_step = {}
+                prog.executed_ops_last_step["SAVE_STATE"] = 0.0
+
+                self._snapshot.save(
+                    prog.current_op_index,
+                    prog.current_op_remaining_ticks,
+                    prog.current_op_remaining_seconds,
+                    prog.executed_ops_last_step
+                )
+
+                self._is_snapshot_saved = True
+                self._is_hibernating = True
+
+                # Account for NVM write and transition to low-power state.
+                cost += self.FRAM_COST_ACTIVE
+                return "shutdown", cost + prog.CPU_SHUTDOWN_COST
+
+            #  If v_supply > V_THRESH_HIBERNATE, execute program normally
+            return "active", prog.get_cost_for_t_step(t_step, v_supply)
+
+        # While in standby or shutdown mode, we do not execute the program
+        prog.executed_ops_last_step = {}
+        if load_mode_from_supply == "standby":
+            cost = prog.CPU_STANDBY_COST
+        elif load_mode_from_supply == "shutdown":
+            cost = prog.CPU_SHUTDOWN_COST
+        return load_mode_from_supply, cost
+
+    def print(self):
+        super().print()
+
+    class Snapshot:
+        def __init__(self):
+            self.curr_op_index = 0
+            self.curr_op_remaining_ticks = 0
+            self.curr_op_remaining_seconds = 0.0
+            self.exec_ops_last_step = {}
+
+        def save(self, index: int, remaining_ticks: int, remaining_seconds: float, exec_ops_last: dict[str, float]):
+            self.curr_op_index = index
+            self.curr_op_remaining_ticks = remaining_ticks
+            self.curr_op_remaining_seconds = remaining_seconds
+            self.exec_ops_last_step = exec_ops_last.copy()
+
+        def restore(self):
+            self.curr_op_index = 0
+            self.curr_op_remaining_ticks = 0
+            self.curr_op_remaining_seconds = 0.0
+            self.exec_ops_last_step.clear()
+
+
 class UFoP(Interface):
     def __init__(self):
         self.name = "UFoP"

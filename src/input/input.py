@@ -30,6 +30,7 @@ _PMIC_REGISTRY = {
 _INTERFACE_REGISTRY = {
     "basic": interface.Basic,
     "mementos": interface.Mementos,
+    "hibernus": interface.Hibernus,
     "ufop": interface.UFoP,
 }
 
