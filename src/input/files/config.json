@@ -24,7 +24,7 @@
     }
   },
   "program": {
-    "filepath": "src/program/files/program02-v2.txt",
+    "filepath": "src/program/files/program02-v1.txt",
     "processing_clock": 0.005
   },
   "interface": "mementos"
