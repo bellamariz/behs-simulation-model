@@ -1,6 +1,6 @@
 # The program monitors the energy levels between the storage and the load.
-# It pauses execution on the CHECKPOINT operation, and only continues
-# if the storage voltage is above the voltage threshold set (v_thresh).
+# It pauses execution on the CHECKPOINT operation to save Program state to NVM when power is scarce.
+# Usually, the Interface has V_THRESHOLD value(s) to assert if energy levels are low.
 # Example from Related Works: Mementos, Hibernus, Hibernus++
 
 SLEEP   0.000001  30000
