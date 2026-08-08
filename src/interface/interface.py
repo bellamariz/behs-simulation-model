@@ -364,9 +364,8 @@ class Mementos(Interface):
             self._snapshot.restore()
 
             # Add cost of NVM read and log it
-            nvm_cost = self.NVM_COST_ACTIVE if load_mode_last == "active" else self.NVM_COST_STANDBY
-            cost += nvm_cost
-            prog.executed_ops_last_step["RESTORE_STATE"] = prog.PROCESSING_CLOCK
+            cost += self._nvm_cost_for_mode(load_mode_last)
+            prog.executed_ops_last_step["RESTORE_STATE"] = 0.001
 
             # Continue Program execution normally
             prog.get_next_valid_op()
@@ -382,15 +381,15 @@ class Mementos(Interface):
             if self._execute_checkpoint:
                 self._execute_checkpoint = False
 
-                # Add cost of active energy monitoring device (ADC) and log it
-                cost += self.INTERNAL_ADC_COST_ACTIVE
-                prog.executed_ops_last_step["ADC_POLLING"] = prog.PROCESSING_CLOCK
+                # Add cost of energy monitoring device (ADC) and log it
+                cost += self._adc_cost_for_mode(load_mode_last)
+                prog.executed_ops_last_step["ADC_POLLING"] = 0.001
 
                 # If supply <= V_THRESHOLD, save the Program state as a snapshot to NVM
-                if v_supply < self.V_THRESHOLD:
+                if v_supply <= self.V_THRESHOLD:
                     # Add cost of NVM write and log it
-                    cost += self.NVM_COST_ACTIVE
-                    prog.executed_ops_last_step["SAVE_STATE"] = prog.PROCESSING_CLOCK
+                    cost += self._nvm_cost_for_mode(load_mode_last)
+                    prog.executed_ops_last_step["SAVE_STATE"] = 0.001
 
                     # Save a snapshot of Program state to NVM
                     self._is_snapshot_saved = True
@@ -413,7 +412,24 @@ class Mementos(Interface):
     def print(self):
         super().print()
 
+    def _nvm_cost_for_mode(self, mode: str) -> float:
+        if mode == "active":
+            return self.NVM_COST_ACTIVE
+        elif mode == "standby":
+            return self.NVM_COST_STANDBY
+        else:
+            return 0.0
 
+    def _adc_cost_for_mode(self, mode: str) -> float:
+        if mode == "active":
+            return self.INTERNAL_ADC_COST_ACTIVE
+        elif mode == "standby":
+            return self.INTERNAL_ADC_COST_STANDBY
+        else:
+            return 0.0
+
+
+# TODO: Finish implementing Hibernus Interface
 # Class Hibernus is a hardware-software Interface based on the following paper
 # https://ieeexplore.ieee.org/document/6960060
 class Hibernus(Interface):
