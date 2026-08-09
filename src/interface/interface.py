@@ -353,24 +353,26 @@ class Mementos(Interface):
         cost = 0.0
         # If a Program snapshot was saved and Load is on active mode
         if self._is_snapshot_saved and load_mode_from_supply == "active":
-            # Restore Program state from snapshot
-            prog.current_op_index = self._snapshot.curr_op_index
-            prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
-            prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
-            prog.executed_ops_last_step = {}
+            # Previous mode wasn't active, so need to restore Program state
+            if load_mode_last != "active":
+                # Restore Program state from snapshot
+                prog.current_op_index = self._snapshot.curr_op_index
+                prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
+                prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
+                prog.executed_ops_last_step = {}
 
-            # Reset snapshot - erased upon restore
-            self._is_snapshot_saved = False
-            self._snapshot.restore()
+                # Reset snapshot - erased upon restore
+                self._is_snapshot_saved = False
+                self._snapshot.restore()
 
-            # Add cost of NVM read and log it
-            cost += self._nvm_cost_for_mode(load_mode_from_supply)
-            prog.executed_ops_last_step["RESTORE_STATE"] = 0.001
+                # Add cost of NVM read and log it
+                cost += self._nvm_cost_for_mode(load_mode_from_supply)
+                prog.executed_ops_last_step["RESTORE_STATE"] = 0.001
 
-            # Continue Program execution normally
-            prog.get_next_valid_op()
+                # Continue Program execution normally
+                prog.get_next_valid_op()
 
-            return "active", cost
+                return "active", cost
 
         # If no snapshot was saved, but Load is on active mode
         if load_mode_from_supply == "active":
