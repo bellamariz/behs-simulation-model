@@ -72,6 +72,8 @@ def main():
     # Uncomment the line below to run the simulation with a UI for input configuration
     # run_ui()
 
+# TODO: Update the tests package to include all the project changes for the last PRs
+
 
 if __name__ == "__main__":
     main()
