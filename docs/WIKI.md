@@ -163,7 +163,7 @@ def run_manual():
 
 The `input` module (`src/input/input.py`) reads the configuration JSON file in `src/input/files/config.json` and instantiates all components. The `simulator` module (`src/simulator/simulator.py`) calls the `run()` function to execute the simulation and returns its output. This output data is then processed by the `output` module (`src/output/output.py`).
 
-Detailed information on how to setup the simulation correctly is available at [this README.md](/docs/README.md).
+Detailed information on how to setup the simulation correctly is available at [this README.md](/src/input/files/README.md).
 
 ## Class Diagram
 
