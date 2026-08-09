@@ -1,0 +1,15 @@
+# The program monitors the energy levels between the storage and the load.
+# Operations are grouped within a TASK, so execution starts only if there's enough energy to complete it.
+# It never executes a TASK it cannot complete.
+# Example from Related Works: Chance, UFoP, Empire
+
+TASK
+  RX      0.027     102.5
+  PROC    0.00192   1
+TASK
+  SLEEP   0.000001  60000
+TASK
+  SENSE   0.006     44
+  PROC    0.00192   1
+TASK
+  TX      0.03      1

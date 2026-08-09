@@ -1,282 +1,569 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+from src.interface.snapshot import Snapshot
+
+if TYPE_CHECKING:
+    from src.program.program import Program
 
 
-class SimulationForm:
+class Interface(ABC):
+    @abstractmethod
     def __init__(self):
-        self._result = None
-        self._vars = {}
-        self._dynamic_frames = {}
+        self.name: str
+        self.energy_monitoring_device: str
+        self.energy_monitoring_strategy: str
+        self.program_execution_model: str
+        self.program_saves_state: bool
 
-        self._root = tk.Tk()
-        self._root.title("Battery-less Energy Harvesting System Simulator")
-        self._root.resizable(True, True)
+    @abstractmethod
+    def program_get_cost_float(self, t_step: float, v_supply: float, prog: "Program") -> float:
+        # Determine how many PROCESSING_CLOCK ticks fit in this t_step
+        # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
+        ticks_per_t_step = max(1, round(t_step / prog.PROCESSING_CLOCK))
+        estimated_zero = 1e-12
+        prog.executed_ops_last_step = {}
 
-        self._apply_style()
-        self._build()
+        total_cost = 0.0
+        for _ in range(ticks_per_t_step):
+            remaining_tick = prog.PROCESSING_CLOCK
 
-    def _apply_style(self):
-        self._root.configure(bg="#1c3a5e")
-        style = ttk.Style(self._root)
-        style.theme_use("clam")
-        style.configure(".", background="#1c3a5e", foreground="white",
-                        font=("Arial", 10))
-        style.configure("TFrame", background="#1c3a5e")
-        style.configure("TLabel", background="#1c3a5e", foreground="white")
-        style.configure("TLabelframe", background="#1c3a5e",
-                        foreground="white", bordercolor="#4a7fc1")
-        style.configure("TLabelframe.Label", background="#1c3a5e",
-                        foreground="white", font=("Arial", 11, "bold"))
-        style.configure("TEntry", fieldbackground="#2d5a8e", foreground="white",
-                        insertcolor="white")
-        style.configure("TCombobox", fieldbackground="#2d5a8e",
-                        foreground="white", selectbackground="#3a7bc8")
-        style.map("TCombobox", fieldbackground=[("readonly", "#2d5a8e")])
-        style.configure("TButton", background="#3a7bc8", foreground="white",
-                        font=("Arial", 10, "bold"))
-        style.map("TButton", background=[("active", "#4a8fd8")])
+            # Finish inner loop when tick is complete or when there are no operations left
+            # NOTE: When tracking the elapsed time of an Operation within a tick, we may encounter precision issues with very small floats
+            # Instead of checking for remaining_tick > 0, we check for a small value close to 0
+            while remaining_tick > estimated_zero:
+                # If program is finished, start again from the beginning
+                if prog.current_op_index >= len(prog.operations):
+                    # Reset current_op_index and get next valid operation
+                    prog.current_op_index = 0
+                    prog.get_next_valid_op()
 
-    def _build(self):
-        # Button bar is packed first so it anchors to the bottom regardless of
-        # scroll content changes — avoids buttons being displaced when dynamic
-        # frames are re-packed inside the scrollable area.
-        btn_frame = ttk.Frame(self._root)
-        btn_frame.pack(side="bottom", fill="x", padx=12, pady=12)
-        ttk.Button(btn_frame, text="Run Simulation",
-                   command=self._on_run).pack(side="left", padx=(0, 6))
-        ttk.Button(btn_frame, text="Cancel",
-                   command=self._on_cancel).pack(side="left")
+                    # Abort execution if the program has no valid operations
+                    if prog.current_op_index >= len(prog.operations):
+                        break
 
-        container = ttk.Frame(self._root)
-        container.pack(fill="both", expand=True)
+                # Get the current operation and its elapsed time for this tick
+                op = prog.operations[prog.current_op_index]
+                elapsed = min(remaining_tick,
+                              prog.current_op_remaining_seconds)
 
-        self._canvas = tk.Canvas(container, bg="#1c3a5e", highlightthickness=0,
-                                 width=520)
-        scrollbar = ttk.Scrollbar(container, orient="vertical",
-                                  command=self._canvas.yview)
-        self._scroll_frame = ttk.Frame(self._canvas)
+                # Track elapsed seconds per instruction for this t_step
+                instruct = op.instruction
+                prog.executed_ops_last_step[instruct] = prog.executed_ops_last_step.get(
+                    instruct, 0.0) + elapsed
 
-        self._scroll_frame.bind(
-            "<Configure>",
-            lambda e: self._canvas.configure(
-                scrollregion=self._canvas.bbox("all"))
-        )
-        self._canvas.create_window((0, 0), window=self._scroll_frame,
-                                   anchor="nw")
-        self._canvas.configure(yscrollcommand=scrollbar.set)
+                # Calculate operation cost for the elapsed time
+                if op.duration >= t_step:
+                    total_cost += op.cost * (elapsed / t_step)
+                else:
+                    total_cost += op.cost * (elapsed / op.duration)
 
-        scrollbar.pack(side="right", fill="y")
-        self._canvas.pack(side="left", fill="both", expand=True)
-        self._canvas.bind("<Enter>", lambda _: self._canvas.bind_all(
-            "<MouseWheel>", self._on_mousewheel))
-        self._canvas.bind(
-            "<Leave>", lambda _: self._canvas.unbind_all("<MouseWheel>"))
+                # Add active CPU cost for non-CPU instructions
+                if op.instruction not in ["SLEEP", "PROC"]:
+                    total_cost += prog.CPU_ACTIVE_COST * (elapsed / t_step)
 
-        f = self._scroll_frame
-        ttk.Label(f, text="Simulation Configuration",
-                  font=("Arial", 14, "bold")).pack(anchor="w", padx=12,
-                                                   pady=(12, 4))
+                # Decrease the remaining seconds necessary to complete operation
+                prog.current_op_remaining_seconds -= elapsed
+                remaining_tick -= elapsed
 
-        self._build_simulation_frame(f)
-        self._build_supply_frame(f)
-        self._build_storage_frame(f)
-        self._build_load_frame(f)
-        self._build_actions_frame(f)
+                # Move to next operation once current one is over
+                # NOTE: Since we are possibly dealing with very small floats, precision is an issue
+                # Instead of checking for remaining_seconds <= 0, we check for a small value close to 0
+                if prog.current_op_remaining_seconds <= estimated_zero:
+                    prog.current_op_index += 1
+                    prog.get_next_valid_op()
 
-    def _on_mousewheel(self, event):
-        delta = event.delta
-        if abs(delta) >= 120:
-            delta = delta // 120
-        self._canvas.yview_scroll(-delta, "units")
+        return total_cost
 
-    def _refresh_scroll(self):
-        self._canvas.update_idletasks()
-        self._canvas.configure(scrollregion=self._canvas.bbox("all"))
+    @abstractmethod
+    def program_get_cost_integer(self, t_step: float, v_supply: float, prog: "Program") -> int:
+        # Determine how many PROCESSING_CLOCK ticks fit in this t_step
+        # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
+        ticks_per_t_step = max(1, round(t_step / prog.PROCESSING_CLOCK))
+        prog.executed_ops_last_step = {}
 
-    def _var(self, key, default=""):
-        var = tk.StringVar(value=default)
-        self._vars[key] = var
-        return var
+        total_cost = 0.0
+        for _ in range(ticks_per_t_step):
+            # If program is finished, start again from the beginning
+            if prog.current_op_index >= len(prog.operations):
+                # Reset current_op_index and get next valid operation
+                prog.current_op_index = 0
+                prog.get_next_valid_op()
 
-    def _add_field(self, parent, label_text, key, default, entry_width=14):
-        row = ttk.Frame(parent)
-        row.pack(fill="x", padx=6, pady=2)
-        ttk.Label(row, text=label_text, width=30, anchor="w").pack(side="left")
-        ttk.Entry(row, textvariable=self._var(key, default),
-                  width=entry_width).pack(side="left")
-        return row
+                # Abort execution if the program has no valid operations
+                if prog.current_op_index >= len(prog.operations):
+                    break
 
-    def _add_combo(self, parent, label_text, key, options, default):
-        row = ttk.Frame(parent)
-        row.pack(fill="x", padx=6, pady=2)
-        ttk.Label(row, text=label_text, width=30, anchor="w").pack(side="left")
-        var = tk.StringVar(value=default)
-        self._vars[key] = var
-        combo = ttk.Combobox(row, textvariable=var, values=options,
-                             state="readonly", width=16)
-        combo.pack(side="left")
-        return combo
+            # Get the current operation for this tick
+            op = prog.operations[prog.current_op_index]
 
-    def _build_simulation_frame(self, parent):
-        lf = ttk.LabelFrame(parent, text="Time Parameters", padding=6)
-        lf.pack(fill="x", padx=12, pady=5)
-        self._add_field(lf, "Duration (s):", "sim_duration", "120")
-        self._add_field(lf, "Step (s):", "sim_step", "0.25")
+            # Track elapsed seconds per instruction for this t_step
+            instruct = op.instruction
+            prog.executed_ops_last_step[instruct] = prog.executed_ops_last_step.get(
+                instruct, 0.0) + prog.PROCESSING_CLOCK
 
-    def _build_supply_frame(self, parent):
-        lf = ttk.LabelFrame(parent, text="Supply", padding=6)
-        lf.pack(fill="x", padx=12, pady=5)
+            # Calculate total cost for this tick
+            if op.duration >= t_step:
+                total_cost += op.cost / ticks_per_t_step
+            else:
+                total_cost += op.cost / op.ticks_needed
 
-        combo = self._add_combo(lf, "Type:", "supply_type",
-                                ["constant", "harvesting"], "constant")
+            # Add active CPU cost for non-CPU instructions
+            if op.instruction not in ["SLEEP", "PROC"]:
+                total_cost += prog.CPU_ACTIVE_COST / ticks_per_t_step
 
-        const_frame = ttk.Frame(lf)
-        const_frame.pack(fill="x")
-        self._add_field(const_frame, "Base Power Output (W):",
-                        "supply_p_base", "0.05")
-        self._dynamic_frames["supply_constant"] = const_frame
+            # Decrease the remaining ticks necessary to complete operation
+            prog.current_op_remaining_ticks -= 1
 
-        harv_frame = ttk.Frame(lf)
-        self._add_field(harv_frame, "Filename:", "supply_filename", "",
-                        entry_width=30)
-        self._add_field(harv_frame, "Sampling Period (s):",
-                        "supply_sampling_period", "2")
-        self._dynamic_frames["supply_harvesting"] = harv_frame
-        harv_frame.pack_forget()
+            # Advance to next operation once there are no ticks left for operation
+            if prog.current_op_remaining_ticks <= 0:
+                prog.current_op_index += 1
+                prog.get_next_valid_op()
 
-        combo.bind("<<ComboboxSelected>>",
-                   lambda _: self._on_supply_type_change())
+        return total_cost
 
-    def _build_storage_frame(self, parent):
-        lf = ttk.LabelFrame(parent, text="Storage", padding=6)
-        lf.pack(fill="x", padx=12, pady=5)
+    @abstractmethod
+    def program_get_next_valid_op(self, prog: "Program"):
+        while prog.current_op_index < len(prog.operations):
+            # Get the next operation that needs to be executed
+            op = prog.operations[prog.current_op_index]
 
-        self._add_combo(lf, "Type:", "storage_type",
-                        ["capacitor"], "capacitor")
-        self._add_field(lf, "Capacitance (F):", "storage_capacitance", "0.1")
-        self._add_field(lf, "Max Operating Voltage (V):",
-                        "storage_v_oper_max", "5.5")
+            # Skip operation if their duration is unknown (e.g. CHECKPOINT is just a marker)
+            # Otherwise, set how much time (seconds or ticks) is needed to execute it
+            if op.duration <= 0.0:
+                prog.current_op_index += 1
+            else:
+                prog.current_op_remaining_seconds = op.duration
+                prog.current_op_remaining_ticks = op.ticks_needed
+                return
 
-    def _build_load_frame(self, parent):
-        lf = ttk.LabelFrame(parent, text="Load", padding=6)
-        lf.pack(fill="x", padx=12, pady=5)
+    @abstractmethod
+    def program_reset(self, prog: "Program"):
+        prog.current_op_index = 0
+        prog.current_op_remaining_ticks = 0
+        prog.current_op_remaining_seconds = 0.0
+        prog.executed_ops_last_step = {}
+        prog.get_next_valid_op()
 
-        combo = self._add_combo(lf, "Type:", "load_type",
-                                ["resistor", "mcu"], "mcu")
-
-        resistor_frame = ttk.Frame(lf)
-        self._add_field(resistor_frame, "Resistance (Ohms):",
-                        "load_resistance", "1600")
-        self._add_field(resistor_frame, "Power Rating (W):",
-                        "load_p_rating", "0.25")
-        self._add_field(resistor_frame, "Max Voltage (V):",
-                        "load_v_max", "5.5")
-        self._dynamic_frames["load_resistor"] = resistor_frame
-        resistor_frame.pack_forget()
-
-        mcu_frame = ttk.Frame(lf)
-        mcu_frame.pack(fill="x")
-        self._add_field(mcu_frame, "Min Voltage (V):", "load_v_min", "1.8")
-        self._add_field(mcu_frame, "Wake-up Voltage (V):",
-                        "load_v_wake_up", "2")
-        self._add_field(mcu_frame, "Low Power Op. Voltage (V):",
-                        "load_v_oper_low", "2.2")
-        self._add_field(mcu_frame, "Active Op. Voltage (V):",
-                        "load_v_oper_active", "3.0")
-        self._add_field(mcu_frame, "Max Voltage (V):",
-                        "load_v_max", "3.6")
-
-        modes_frame = ttk.Frame(mcu_frame)
-        modes_frame.pack(fill="x", pady=(6, 2))
-        ttk.Label(modes_frame, text="Consumption Current (A)",
-                  font=("Arial", 10), foreground="white").pack(
-                      anchor="w", padx=6, pady=(0, 2))
-        sub_frame = ttk.Frame(modes_frame)
-        sub_frame.pack(fill="x", padx=(30, 0))
-        self._add_field(sub_frame, "Shutdown Mode:",
-                        "load_mode_shutdown", "0")
-        self._add_field(sub_frame, "Low-Power Mode:",
-                        "load_mode_low_power", "0.000092")
-        self._add_field(sub_frame, "Active Mode:",
-                        "load_mode_active", "0.00048")
-
-        self._add_field(mcu_frame, "Program Script:", "load_program",
-                        "src/input/files/program01.script", entry_width=30)
-        self._dynamic_frames["load_mcu"] = mcu_frame
-
-        combo.bind("<<ComboboxSelected>>",
-                   lambda _: self._on_load_type_change())
-
-    def _build_actions_frame(self, parent):
-        lf = ttk.LabelFrame(parent, text="Actions", padding=6)
-        self._dynamic_frames["actions"] = lf
-        lf.pack(fill="x", padx=12, pady=5)
-
-        header = ttk.Frame(lf)
-        header.pack(fill="x", padx=6, pady=(0, 2))
-        ttk.Label(header, text="Action", width=14, anchor="w",
-                  font=("Arial", 10, "bold")).pack(side="left")
-        ttk.Label(header, text="Instruction", width=14, anchor="w",
-                  font=("Arial", 10, "bold")).pack(side="left")
-        ttk.Label(header, text="Cost (A)", width=14, anchor="w",
-                  font=("Arial", 10, "bold")).pack(side="left")
-
-        actions = [
-            ("Sleeping:", "action_sleep_instr", "SLEEP",
-             "action_sleep_cost", "0.00012"),
-            ("Sensing:", "action_sense_instr", "SENSE",
-             "action_sense_cost", "0.006"),
-            ("Transmitting:", "action_tx_instr", "TX_ON",
-             "action_tx_cost", "0.03"),
-            ("Receiving:", "action_rx_instr", "RX_ON",
-             "action_rx_cost", "0.027"),
-            ("Processing:", "action_proc_instr", "CPU_PROC",
-             "action_proc_cost", "0"),
-        ]
-        for label, instr_key, instr_default, cost_key, cost_default in actions:
-            row = ttk.Frame(lf)
-            row.pack(fill="x", padx=6, pady=1)
-            ttk.Label(row, text=label, width=14, anchor="w").pack(side="left")
-            ttk.Entry(row, textvariable=self._var(instr_key, instr_default),
-                      width=12).pack(side="left", padx=(0, 4))
-            ttk.Entry(row, textvariable=self._var(cost_key, cost_default),
-                      width=12).pack(side="left")
-
-    def _on_supply_type_change(self):
-        is_constant = self._vars["supply_type"].get() == "constant"
-        if is_constant:
-            self._dynamic_frames["supply_harvesting"].pack_forget()
-            self._dynamic_frames["supply_constant"].pack(fill="x")
+    @abstractmethod
+    def program_manage_execution(self, v_supply: float, t_step: float, prog: "Program",
+                                 load_mode_last: str, load_mode_from_supply: str) -> tuple[str, float]:
+        cost = 0.0
+        if load_mode_from_supply == "active":
+            cost = prog.get_cost_for_t_step(t_step, v_supply)
         else:
-            self._dynamic_frames["supply_constant"].pack_forget()
-            self._dynamic_frames["supply_harvesting"].pack(fill="x")
-        self._refresh_scroll()
+            prog.executed_ops_last_step = {}
+            if load_mode_from_supply == "standby":
+                cost = prog.CPU_STANDBY_COST
+            elif load_mode_from_supply == "shutdown":
+                cost = prog.CPU_SHUTDOWN_COST
+        return load_mode_from_supply, cost
 
-    def _on_load_type_change(self):
-        is_mcu = self._vars["load_type"].get() == "mcu"
-        if is_mcu:
-            self._dynamic_frames["load_resistor"].pack_forget()
-            self._dynamic_frames["load_mcu"].pack(fill="x")
-            self._dynamic_frames["actions"].pack(fill="x", padx=12, pady=5)
+    @abstractmethod
+    def print(self):
+        print(f"Interface: {self.name}, "
+              f"energy_monitoring_device={self.energy_monitoring_device}, "
+              f"energy_monitoring_strategy={self.energy_monitoring_strategy}, "
+              f"program_execution_model={self.program_execution_model}"
+              )
+
+
+class Basic(Interface):
+    def __init__(self):
+        self.name = "Basic"
+        self.energy_monitoring_device = "NONE"
+        self.energy_monitoring_strategy = "NONE"
+        self.program_execution_model = "NONE"
+        self.program_saves_state = False
+
+    def program_get_cost_float(self, t_step: float, v_supply: float, prog: "Program") -> float:
+        return super().program_get_cost_float(t_step, v_supply, prog)
+
+    def program_get_cost_integer(self, t_step: float, v_supply: float, prog: "Program") -> int:
+        return super().program_get_cost_integer(t_step, v_supply, prog)
+
+    def program_get_next_valid_op(self, prog: "Program"):
+        super().program_get_next_valid_op(prog)
+
+    def program_reset(self, prog: "Program"):
+        super().program_reset(prog)
+
+    def program_manage_execution(self, v_supply, t_step, prog, load_mode_last, load_mode_from_supply) -> tuple[str, float]:
+        return super().program_manage_execution(v_supply, t_step,
+                                                prog, load_mode_last, load_mode_from_supply)
+
+    def print(self):
+        super().print()
+
+
+# Class Mementos is a hardware-software Interface based on the following paper
+# Source: https://dl.acm.org/doi/10.1145/1961295.1950386
+class Mementos(Interface):
+    def __init__(self):
+        self.name = "Mementos"
+        self.energy_monitoring_device = "INTERNAL"
+        self.energy_monitoring_strategy = "ACTIVE"
+        self.program_execution_model = "CHECKPOINTING"
+        self.program_saves_state = True
+
+        # NOTE: ADC and NVM value(s) based on the TI MSP430FR59xx MCU specs
+        self.INTERNAL_ADC_COST_ACTIVE = 0.000245
+        self.INTERNAL_ADC_COST_STANDBY = 0.000165
+        self.NVM_COST_ACTIVE = 0.002265  # 50% cache hit (FRAM)
+        self.NVM_COST_STANDBY = 0.001070
+        self.V_THRESHOLD = 3.2
+
+        # Verify if the Program started to execute a CHECKPOINT instruction
+        self._execute_checkpoint = False
+        self._is_snapshot_saved = False
+        self._snapshot = Snapshot()
+
+    def program_get_cost_float(self, t_step: float, v_supply: float, prog: "Program") -> float:
+        # Determine how many PROCESSING_CLOCK ticks fit in this t_step
+        # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
+        ticks_per_t_step = max(1, round(t_step / prog.PROCESSING_CLOCK))
+        estimated_zero = 1e-12
+        prog.executed_ops_last_step = {}
+
+        total_cost = 0.0
+        for _ in range(ticks_per_t_step):
+            remaining_tick = prog.PROCESSING_CLOCK
+
+            # Finish inner loop when tick is complete or when there are no operations left
+            # NOTE: When tracking the elapsed time of an Operation within a tick, we may encounter precision issues with very small floats
+            # Instead of checking for remaining_tick > 0, we check for a small value close to 0
+            while remaining_tick > estimated_zero:
+                # If program is finished, start again from the beginning
+                if prog.current_op_index >= len(prog.operations):
+                    # Reset current_op_index and get next valid operation
+                    prog.current_op_index = 0
+                    prog.get_next_valid_op()
+
+                    # Abort execution if the program has no valid operations
+                    if prog.current_op_index >= len(prog.operations):
+                        break
+
+                # If next operation is a CHECKPOINT, stop execution and return the accumulated cost
+                if self._execute_checkpoint:
+                    return total_cost
+
+                # Get the current operation its elapsed time for this tick
+                op = prog.operations[prog.current_op_index]
+                elapsed = min(remaining_tick,
+                              prog.current_op_remaining_seconds)
+
+                # Track elapsed seconds per instruction for this t_step
+                instruct = op.instruction
+                prog.executed_ops_last_step[instruct] = prog.executed_ops_last_step.get(
+                    instruct, 0.0) + elapsed
+
+                # Calculate operation cost for the elapsed time
+                if op.duration >= t_step:
+                    total_cost += op.cost * (elapsed / t_step)
+                else:
+                    total_cost += op.cost * (elapsed / op.duration)
+
+                # Add active CPU cost for non-CPU instructions
+                if op.instruction not in ["SLEEP", "PROC"]:
+                    total_cost += prog.CPU_ACTIVE_COST * (elapsed / t_step)
+
+                # Decrease the remaining seconds necessary to complete operation
+                prog.current_op_remaining_seconds -= elapsed
+                remaining_tick -= elapsed
+
+                # Move to next operation once current one is over
+                # NOTE: Since we are possibly dealing with very small floats, precision is an issue
+                # Instead of checking for remaining_seconds <= 0, we check for a small value close to 0
+                if prog.current_op_remaining_seconds <= estimated_zero:
+                    prog.current_op_index += 1
+                    prog.get_next_valid_op()
+
+        return total_cost
+
+    def program_get_cost_integer(self, t_step: float, v_supply: float, prog: "Program") -> int:
+        # Determine how many PROCESSING_CLOCK ticks fit in this t_step
+        # Safeguard: if t_step < PROCESSING_CLOCK, we still process at least one tick
+        ticks_per_t_step = max(1, round(t_step / prog.PROCESSING_CLOCK))
+        prog.executed_ops_last_step = {}
+
+        total_cost = 0.0
+        for _ in range(ticks_per_t_step):
+            # If program is finished, start again from the beginning
+            if prog.current_op_index >= len(prog.operations):
+                # Reset current_op_index and get next valid operation
+                prog.current_op_index = 0
+                prog.get_next_valid_op()
+
+                # Abort execution if the program has no valid operations
+                if prog.current_op_index >= len(prog.operations):
+                    break
+
+            # If next operation is a CHECKPOINT, stop execution and return the accumulated cost
+            if self._execute_checkpoint:
+                return total_cost
+
+            # Get the current operation for this tick
+            op = prog.operations[prog.current_op_index]
+
+            # Track elapsed seconds per instruction for this t_step
+            instruct = op.instruction
+            prog.executed_ops_last_step[instruct] = prog.executed_ops_last_step.get(
+                instruct, 0.0) + prog.PROCESSING_CLOCK
+
+            # Calculate total cost for this tick
+            if op.duration >= t_step:
+                total_cost += op.cost / ticks_per_t_step
+            else:
+                total_cost += op.cost / op.ticks_needed
+
+            # Add active CPU cost for non-CPU instructions
+            if op.instruction not in ["SLEEP", "PROC"]:
+                total_cost += prog.CPU_ACTIVE_COST / ticks_per_t_step
+
+            # Decrease the remaining ticks necessary to complete operation
+            prog.current_op_remaining_ticks -= 1
+
+            # Advance to next operation once there are no ticks left for operation
+            if prog.current_op_remaining_ticks <= 0:
+                prog.current_op_index += 1
+                prog.get_next_valid_op()
+
+        return total_cost
+
+    def program_get_next_valid_op(self, prog: "Program"):
+        while prog.current_op_index < len(prog.operations):
+            op = prog.operations[prog.current_op_index]
+            if op.duration <= 0.0:
+                if op.instruction == "CHECKPOINT":
+                    self._execute_checkpoint = True
+                prog.current_op_index += 1
+            else:
+                prog.current_op_remaining_seconds = op.duration
+                prog.current_op_remaining_ticks = op.ticks_needed
+                return
+
+    def program_reset(self, prog: "Program"):
+        super().program_reset(prog)
+
+    def program_manage_execution(self, v_supply, t_step, prog, load_mode_last, load_mode_from_supply):
+        if not prog.has_checkpoint():
+            return super().program_manage_execution(v_supply, t_step,
+                                                    prog, load_mode_last, load_mode_from_supply)
+
+        cost = 0.0
+        # If a Program snapshot was saved and Load is on active mode
+        if self._is_snapshot_saved and load_mode_from_supply == "active":
+            # Previous mode wasn't active, so need to restore Program state
+            if load_mode_last != "active":
+                # Restore Program state from snapshot
+                prog.current_op_index = self._snapshot.curr_op_index
+                prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
+                prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
+                prog.executed_ops_last_step = {}
+
+                # Reset snapshot - erased upon restore
+                self._is_snapshot_saved = False
+                self._snapshot.restore()
+
+                # Add cost of NVM read and log it
+                cost += self._nvm_cost_for_mode(load_mode_from_supply)
+                prog.executed_ops_last_step["RESTORE_STATE"] = 0.001
+
+                # Continue Program execution normally
+                prog.get_next_valid_op()
+
+                return "active", cost
+
+        # If no snapshot was saved, but Load is on active mode
+        if load_mode_from_supply == "active":
+            # Execute Program normally
+            cost += prog.get_cost_for_t_step(t_step, v_supply)
+
+            # If current operation is a CHECKPOINT
+            if self._execute_checkpoint:
+                self._execute_checkpoint = False
+
+                # Add cost of energy monitoring device (ADC) and log it
+                cost += self._adc_cost_for_mode(load_mode_from_supply)
+                prog.executed_ops_last_step["ADC_POLLING"] = 0.001
+
+                # If supply <= V_THRESHOLD, save the Program state as a snapshot to NVM
+                if v_supply <= self.V_THRESHOLD:
+                    # Add cost of NVM write and log it
+                    cost += self._nvm_cost_for_mode(load_mode_from_supply)
+                    prog.executed_ops_last_step["SAVE_STATE"] = 0.001
+
+                    # Save a snapshot of Program state to NVM
+                    self._is_snapshot_saved = True
+                    self._snapshot.save(
+                        prog.current_op_index,
+                        prog.current_op_remaining_ticks,
+                        prog.current_op_remaining_seconds,
+                        prog.executed_ops_last_step
+                    )
         else:
-            self._dynamic_frames["load_mcu"].pack_forget()
-            self._dynamic_frames["actions"].pack_forget()
-            self._dynamic_frames["load_resistor"].pack(fill="x")
-        self._refresh_scroll()
+            prog.executed_ops_last_step = {}
+            if load_mode_from_supply == "standby":
+                # Get cost for standby mode
+                cost = prog.CPU_STANDBY_COST
+            elif load_mode_from_supply == "shutdown":
+                # Get cost for shutdown mode
+                cost = prog.CPU_SHUTDOWN_COST
+        return load_mode_from_supply, cost
 
-    def _on_run(self):
-        self._result = {key: var.get() for key, var in self._vars.items()}
-        self._root.quit()
+    def print(self):
+        super().print()
 
-    def _on_cancel(self):
-        self._result = None
-        self._root.quit()
+    def _nvm_cost_for_mode(self, mode: str) -> float:
+        if mode == "active":
+            return self.NVM_COST_ACTIVE
+        elif mode == "standby":
+            return self.NVM_COST_STANDBY
+        else:
+            return 0.0
 
-    def run(self):
-        self._root.mainloop()
-        self._root.destroy()
-        return self._result
+    def _adc_cost_for_mode(self, mode: str) -> float:
+        if mode == "active":
+            return self.INTERNAL_ADC_COST_ACTIVE
+        elif mode == "standby":
+            return self.INTERNAL_ADC_COST_STANDBY
+        else:
+            return 0.0
 
 
-def build_input_form():
-    return SimulationForm()
+# TODO: Finish implementing Hibernus Interface
+# Class Hibernus is a hardware-software Interface based on the following paper
+# https://ieeexplore.ieee.org/document/6960060
+class Hibernus(Interface):
+    def __init__(self):
+        self.name = "Hibernus"
+        self.energy_monitoring_device = "INTERNAL+EXTERNAL"
+        self.energy_monitoring_strategy = "PASSIVE"
+        self.program_execution_model = "CHECKPOINTING"
+        self.program_saves_state = True
+
+        # NOTE: NVM value(s) based on the TI MSP430FR59xx MCU specs
+        self.NVM_COST_ACTIVE = 0.002265  # 50% cache hit (FRAM)
+        self.V_THRESH_HIBERNATE = 3.2
+        self.V_THRESH_RESTORE = 3.3
+
+        self._is_hibernating = False
+        self._is_snapshot_saved = False
+        self._snapshot = Snapshot()
+
+    def program_get_cost_float(self, t_step: float, v_supply: float, prog: "Program") -> float:
+        return super().program_get_cost_float(t_step, v_supply, prog)
+
+    def program_get_cost_integer(self, t_step: float, v_supply: float, prog: "Program") -> int:
+        return super().program_get_cost_integer(t_step, v_supply, prog)
+
+    def program_get_next_valid_op(self, prog: "Program"):
+        super().program_get_next_valid_op(prog)
+
+    def program_reset(self, prog: "Program"):
+        # Clean program execution ops dict when hibernating
+        # It will be restored from Snapshot
+        if self._is_hibernating or self._is_snapshot_saved:
+            prog.executed_ops_last_step = {}
+            return
+
+        super().program_reset(prog)
+
+    def program_manage_execution(self, v_supply, t_step, prog, load_mode_last, load_mode_from_supply):
+        cost = 0.0
+
+        # If a Program snapshot was saved
+        if self._is_snapshot_saved:
+            prog.executed_ops_last_step = {}
+
+            # If active mode, and v_supply > V_THRESH_RESTORE
+            if load_mode_from_supply == "active" and v_supply >= self.V_THRESH_RESTORE:
+                # Restore the Program state from the snapshot
+                prog.current_op_index = self._snapshot.curr_op_index
+                prog.current_op_remaining_ticks = self._snapshot.curr_op_remaining_ticks
+                prog.current_op_remaining_seconds = self._snapshot.curr_op_remaining_seconds
+                prog.executed_ops_last_step = self._snapshot.exec_ops_last_step.copy()
+
+                # Add cost of NVM read and log it
+                cost += self.NVM_COST_ACTIVE
+                prog.executed_ops_last_step["RESTORE_STATE"] = 0.0
+
+                # Resume normal execution
+                self._is_hibernating = False
+                self._is_snapshot_saved = False
+                self._snapshot.restore()
+
+                # Get next valid operation
+                prog.get_next_valid_op()
+
+                return "active", cost
+
+            # While hibernating, load should be on standby mode
+            self._is_hibernating = True
+            prog.executed_ops_last_step["HIBERNATE"] = 0.0
+            return "standby", prog.CPU_STANDBY_COST
+
+        # If no snapshot was saved
+        if load_mode_from_supply == "active":
+            # If v_supply <= V_THRESH_HIBERNATE, save Program snapshot
+            if v_supply <= self.V_THRESH_HIBERNATE:
+                prog.executed_ops_last_step = {}
+                prog.executed_ops_last_step["SAVE_STATE"] = 0.0
+
+                self._snapshot.save(
+                    prog.current_op_index,
+                    prog.current_op_remaining_ticks,
+                    prog.current_op_remaining_seconds,
+                    prog.executed_ops_last_step
+                )
+
+                self._is_snapshot_saved = True
+                self._is_hibernating = True
+
+                # Account for NVM write and transition to low-power state.
+                cost += self.NVM_COST_ACTIVE
+                return "shutdown", cost + prog.CPU_SHUTDOWN_COST
+
+            #  If v_supply > V_THRESH_HIBERNATE, execute program normally
+            return "active", prog.get_cost_for_t_step(t_step, v_supply)
+
+        # While in standby or shutdown mode, we do not execute the program
+        prog.executed_ops_last_step = {}
+        if load_mode_from_supply == "standby":
+            cost = prog.CPU_STANDBY_COST
+        elif load_mode_from_supply == "shutdown":
+            cost = prog.CPU_SHUTDOWN_COST
+        return load_mode_from_supply, cost
+
+    def print(self):
+        super().print()
+
+
+# TODO: Implement UFoP Interface
+# Class UFoP is a hardware-software Interface based on the following paper
+# https://dl.acm.org/doi/10.1145/2809695.2809707
+class UFoP(Interface):
+    def __init__(self):
+        self.name = "UFoP"
+        self.energy_monitoring_device = "INTERNAL+EXTERNAL"
+        self.energy_monitoring_strategy = "ACTIVE"
+        self.program_execution_model = "TASK-BASED"
+        self.program_saves_state = False
+
+    def program_get_cost_float(self, t_step: float, v_supply: float, prog: "Program") -> float:
+        pass
+
+    def program_get_cost_integer(self, t_step: float, v_supply: float, prog: "Program") -> int:
+        pass
+
+    def program_get_next_valid_op(self, prog: "Program"):
+        pass
+
+    def program_reset(self, prog: "Program"):
+        pass
+
+    def program_manage_execution(self, v_supply, t_step, prog, previous_mode, default_mode):
+        pass
+
+    def print(self):
+        super().print()

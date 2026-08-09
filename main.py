@@ -1,8 +1,7 @@
 import src.simulator.simulator as simulator
 import src.output.output as out
 import src.input.input as inp
-import src.interface.interface as ui
-import src.eh.eh as eh
+import src.ui.ui as ui
 from tkinter import messagebox
 
 
@@ -69,7 +68,7 @@ def main():
     # Uncomment the line below to run the simulation with a manual configuration
     run_manual()
 
-    # TODO: Update interface to consider new simulation UI
+    # TODO: Implement new simulation UI
     # Uncomment the line below to run the simulation with a UI for input configuration
     # run_ui()
 

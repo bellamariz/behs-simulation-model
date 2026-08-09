@@ -127,6 +127,7 @@ class MCU(Load):
         self.V_OPER_SHUTDOWN = self.SHUTDOWN_MODE.get("v_oper")
         self.V_OPER_STANDBY = self.STANDBY_MODE.get("v_oper")
         self.V_OPER_ACTIVE = self.ACTIVE_MODE.get("v_oper")
+        self._program_cost = 0.0
 
         # Inherited attributes
         self.type = config.get("type")
@@ -146,19 +147,15 @@ class MCU(Load):
         return min(v_supply, self.V_MAX)
 
     def calculate_current(self, v_supply, t_step):
-        active_cost = self.ACTIVE_MODE.get("cost")
-        standby_cost = self.STANDBY_MODE.get("cost")
-        shutdown_cost = self.SHUTDOWN_MODE.get("cost")
+        if self.program is not None:
+            return self._program_cost
 
-        # We only execute the program if the MCU is in active mode
         if self.mode == "active":
-            if self.program is not None:
-                return self.program.get_cost_for_t_step(t_step)
-            return active_cost
+            return self.ACTIVE_MODE.get("cost")
         elif self.mode == "standby":
-            return standby_cost
+            return self.STANDBY_MODE.get("cost")
         elif self.mode == "shutdown":
-            return shutdown_cost
+            return self.SHUTDOWN_MODE.get("cost")
         else:
             return 0.0
 
@@ -169,25 +166,34 @@ class MCU(Load):
         super().upload_software(program)
 
     def refresh(self, v_supply, t_step):
-        # Update mode before calculating energy so costs reflect current state
-        if v_supply < self.V_MIN:
-            self.mode = "off"
-        elif self.V_MIN <= v_supply < self.V_OPER_SHUTDOWN:
-            self.mode = "idle"
-        elif self.V_OPER_SHUTDOWN <= v_supply < self.V_OPER_STANDBY:
-            self.mode = "shutdown"
-        elif self.V_OPER_STANDBY <= v_supply < self.V_OPER_ACTIVE:
-            self.mode = "standby"
-        elif v_supply >= self.V_OPER_ACTIVE:
-            self.mode = "active"
+        # Get the operating mode for the current supply voltage
+        mode_from_supply = self._mode_based_on_supply(v_supply)
 
-        # CPU is reset and there's no full data retention if MCU loses power (not "active" or "standby")
-        # Unless the Program is designed to save state, it will be reset
-        if self.program is not None and self.mode not in ["active", "standby"]:
-            self.program.reset()
+        # Get operating mode and program cost for the given Program-Load interface
+        if self.program is not None:
+            self.mode, self._program_cost = self.program.interface.program_manage_execution(
+                v_supply, t_step, self.program, self.mode, mode_from_supply)
+
+            if self.mode not in ["active", "standby"]:
+                self.program.reset()
+        else:
+            self.mode = mode_from_supply
 
         # Update Load state
         super().refresh(v_supply, t_step)
 
     def print(self, t_index, file):
         super().print(t_index, file)
+
+        # Get MCU's operating mode based on supply voltage
+    def _mode_based_on_supply(self, v_supply) -> str:
+        if v_supply < self.V_MIN:
+            return "off"
+        elif self.V_MIN <= v_supply < self.V_OPER_SHUTDOWN:
+            return "idle"
+        elif self.V_OPER_SHUTDOWN <= v_supply < self.V_OPER_STANDBY:
+            return "shutdown"
+        elif self.V_OPER_STANDBY <= v_supply < self.V_OPER_ACTIVE:
+            return "standby"
+        else:
+            return "active"
