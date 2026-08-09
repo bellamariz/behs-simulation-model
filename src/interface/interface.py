@@ -7,6 +7,10 @@ if TYPE_CHECKING:
     from src.program.program import Program
 
 
+# Implemented interfaces are based on real energy harvesting models and applications.
+# Data was collected from a year-long survey on energy harvesting applications.
+# Due to the inherent complexity of energy harvesting systems and unpredictable periods of power loss,
+# these interfaces are used to help handle the energy storage's charging management and the program's execution control.
 class Interface(ABC):
     @abstractmethod
     def __init__(self):
@@ -168,6 +172,9 @@ class Interface(ABC):
               )
 
 
+# The Basic interface is a hardware-software Interface that is the most naive implementation
+# It does not save program state or monitor the energy levels of the system.
+# It executes the Program when energy is available at the Load.
 class Basic(Interface):
     def __init__(self):
         self.name = "Basic"

@@ -4,105 +4,228 @@ direction TB
     %% Abstract Base Classes
     class EnergySupply {
         <<abstract>>
-        +MAX_SUPPLY_VOLTAGE: float = 10
-        #type: str
-        #voltage: float
-        #profile: list[float]
-        +refresh(t_index: int)* void
+        +type: str
+        +filepath: str
+        +power_supply: float
+        +energy_supply: float
+        +profile: list[float]
+        +refresh(t_index: int, t_step: float)* void
         +print(t_index: int, file)* void
     }
 
     class EnergyStorage {
         <<abstract>>
-        #type: str
-        #voltage: float
-        #current: float
-        #energy_stored: float
-        +calculate_voltage(t_time: int, v_supply: float)* float
-        +calculate_current(t_time: int, v_supply: float)* float
-        +calculate_energy_stored(load_energy_consumed: float)* float
-        +refresh(t_time: float, v_supply: float, load_energy_consumed: float)* void
+        +type: str
+        +status: str
+        +voltage: float
+        +current: float
+        +energy_stored: float
+        +power_stored: float
+        +calculate_voltage()* float
+        +calculate_current()* float
+        +calculate_energy_stored(e_supply: float, e_load: float)* float
+        +calculate_power_stored(t_step: float)* float
+        +refresh(e_supply: float, e_load: float, t_step: float)* void
         +print(t_index: int, file)* void
     }
 
     class Load {
         <<abstract>>
-        #type: str
-        #operating_voltage: float
-        #voltage: float
-        #current: float
-        #energy_consumed: float
-        #total_energy_consumed: float
-        +calculate_voltage(v_supply: float, v_load_min: float)* float
-        +calculate_current(v_supply: float, v_load_min: float)* float
-        +calculate_energy_consumed(v_supply: float, v_load_min: float)* float
-        +refresh(v_supply: float, v_load_min: float)* void
+        +type: str
+        +mode: str
+        +v_on: float
+        +voltage: float
+        +current: float
+        +energy_consumed: float
+        +total_energy_consumed: float
+        +program: Program
+        +calculate_voltage(v_supply: float)* float
+        +calculate_current(v_supply: float, t_step: float)* float
+        +calculate_energy_consumed(v_supply: float, t_step: float)* float
+        +upload_software(program: Program)* void
+        +refresh(v_supply: float, t_step: float)* void
         +print(t_index: int, file)* void
     }
 
-    %% Example Energy Supply Classes
+    class PMIC {
+        <<abstract>>
+        +type: str
+        +status: str
+        +v_out: float
+        +vbat_ok: bool
+        +energy_to_storage: float
+        +energy_from_storage: float
+        +update_vbat_ok_signal(v_storage: float)* bool
+        +calculate_v_out(v_storage: float)* float
+        +calculate_energy_supplied_to_storage(e_supply: float, v_storage: float)* float
+        +calculate_energy_consumed_from_storage(e_load: float, v_storage: float)* float
+        +refresh(e_supply: float, e_load: float, v_storage: float, t_step: float)* void
+        +print(t_index: int, file)* void
+    }
+
+    class Interface {
+        <<abstract>>
+        +name: str
+        +energy_monitoring_device: str
+        +energy_monitoring_strategy: str
+        +program_execution_model: str
+        +program_saves_state: bool
+        +program_get_cost_float(t_step: float, v_supply: float, prog: Program)* float
+        +program_get_cost_integer(t_step: float, v_supply: float, prog: Program)* int
+        +program_get_next_valid_op(prog: Program)* void
+        +program_reset(prog: Program)* void
+        +program_manage_execution(v_supply, t_step, prog, load_mode_last, load_mode_from_supply)* tuple
+        +print()* void
+    }
+
+    %% Energy Supply Implementations
     class ConstantSupply {
         +type: str = "constant"
-        +other_inherited_abstract_attributes
-        +ConstantSupply(t_vector)
-        +inherited_abstract_methods()
-        +unique_class_methods()
+        +P_BASE: float
+        +ConstantSupply(config, t_vector, t_step)
     }
 
     class HarvestingSupply {
         +type: str = "harvesting"
-        +other_inherited_abstract_attributes
-        +HarvestingSupply(t_vector)
-        +inherited_abstract_methods()
-        +unique_class_methods()
+        +SAMPLING_PERIOD: float
+        +HarvestingSupply(config, t_vector, t_step)
     }
 
-    %% Example Energy Storage Classes
+    %% Energy Storage Implementations
     class Capacitor {
-        +CAPACITANCE: float = 0.01
-        +RESISTANCE: float = 2500
-        +TIME_CONSTANT: float
-        +V_STORAGE_MAX: float = 10.0
-        +V_LOAD_MIN: float = 4.0
         +type: str = "capacitor"
-        +other_inherited_abstract_attributes
-        +Capacitor()
-        +inherited_abstract_methods()
-        +unique_class_methods()
+        +CAPACITANCE: float
+        +V_OPER_MAX: float
+        +E_MAX: float
+        +Capacitor(config)
     }
 
-    %% Example Load Classes
+    %% Load Implementations
     class Resistor {
-        +ENERGY_CONSUMPTION: float = 0.001
-        +OPERATING_VOLTAGE: float = 1.0
-        +RESISTANCE: float = 1000
         +type: str = "resistor"
-        +other_inherited_abstract_attributes
-        +Resistor()
-        +inherited_abstract_methods()
-        +unique_class_methods()
+        +RESISTANCE: float
+        +P_RATING: float
+        +V_MAX: float
+        +Resistor(config)
     }
 
     class MCU {
-        +ENERGY_CONSUMPTION: float = 0.02
-        +OPERATING_VOLTAGE: float = 3.3
-        +OPERATING_CURRENT: float = 0.002
         +type: str = "mcu"
-        +other_inherited_abstract_attributes
-        +MCU()
-        +inherited_abstract_methods()
-        +unique_class_methods()
+        +V_MIN: float
+        +V_MAX: float
+        +MODES: dict
+        +MCU(config)
     }
 
-    %% Main Classes
+    %% PMIC Implementations
+    class BoostBuckPMIC {
+        +type: str = "boost_buck"
+        +V_IN_COLD_START: float
+        +V_BOOST_THRESH: float
+        +V_BAT_UV: float
+        +V_BAT_OV: float
+        +V_BAT_OK_LOW: float
+        +V_BAT_OK_HIGH: float
+        +V_OUT_REG: float
+        +MPPT_EFFICIENCY: float
+        +BOOST_EFFICIENCY: float
+        +BUCK_EFFICIENCY: float
+        +COLD_START_EFFICIENCY: float
+        +BoostBuckPMIC(config)
+    }
+
+    %% Interface Implementations
+    class Basic {
+        +name: str = "Basic"
+        +program_execution_model: str = "NONE"
+        +program_saves_state: bool = false
+    }
+
+    class Mementos {
+        +name: str = "Mementos"
+        +program_execution_model: str = "CHECKPOINTING"
+        +program_saves_state: bool = true
+        +INTERNAL_ADC_COST_ACTIVE: float
+        +NVM_COST_ACTIVE: float
+        +V_THRESHOLD: float
+    }
+
+    class Hibernus {
+        +name: str = "Hibernus"
+        +program_execution_model: str = "CHECKPOINTING"
+        +program_saves_state: bool = true
+        +NVM_COST_ACTIVE: float
+        +V_THRESH_HIBERNATE: float
+        +V_THRESH_RESTORE: float
+    }
+
+    class UFoP {
+        +name: str = "UFoP"
+        +program_execution_model: str = "TASK-BASED"
+        +program_saves_state: bool = false
+    }
+
+    %% Supporting Classes
+    class Program {
+        +FILEPATH: str
+        +PROCESSING_CLOCK: float
+        +TICK_MODEL: str
+        +CPU_ACTIVE_COST: float
+        +CPU_STANDBY_COST: float
+        +CPU_SHUTDOWN_COST: float
+        +operations: list[Operation]
+        +interface: Interface
+        +current_op_index: int
+        +executed_ops_last_step: dict
+        +Program(filepath, interface, ...)
+        +get_cost_for_t_step(t_step: float, v_supply: float) float
+        +reset() void
+        +has_checkpoint() bool
+        +has_task() bool
+        +get_next_valid_op() void
+        +print() void
+    }
+
+    class Operation {
+        +name: str
+        +instruction: str
+        +cost: float
+        +duration: float
+        +ticks_needed: int
+    }
+
+    class Snapshot {
+        +curr_op_index: int
+        +curr_op_remaining_ticks: int
+        +curr_op_remaining_seconds: float
+        +exec_ops_last_step: dict
+        +save(index, remaining_ticks, remaining_seconds, exec_ops_last) void
+        +restore() void
+    }
+
+    class Input {
+        +supply: EnergySupply
+        +storage: EnergyStorage
+        +load: Load
+        +pmic: PMIC
+        +t_vector: list[float]
+        +t_step: float
+        +Input(config)
+    }
+
+    class Simulator {
+        +run(sim_input: Input) dict
+    }
+
     class Main {
-        +generate_t_vector(start: float, end: float, interval: float) list[float]
+        +run_manual() void
+        +run_ui() void
         +main() void
     }
 
     class Output {
-        +write_to_log(t_vector: list, supply: EnergySupply, storage: EnergyStorage, load: Load) void
-        +write_to_csv(t_vector: list, supply: EnergySupply, storage: EnergyStorage, load: Load) void
+        +write_to_log(sim_output: dict) void
+        +write_to_csv(sim_output: dict) void
         +write_to_excel() void
         +plot() void
         +plot_all_components_same_subplot() void
@@ -110,23 +233,44 @@ direction TB
         +plot_all_attributes_for_component() void
     }
 
-    %% Inheritance Relationships
-    EnergySupply <|.. ConstantSupply : inherits
-    EnergySupply <|.. HarvestingSupply : inherits
-    EnergyStorage <|.. Capacitor : inherits
-    Load <|.. Resistor : inherits
-    Load <|.. MCU : inherits
+    class TEGDataHDF5Parser {
+        +parse(filepath: str, output_filepath: str) void
+    }
 
-    %% Composition/Usage Relationships
-    Main --> EnergySupply : creates
-    Main --> EnergyStorage : creates
-    Main --> Load : creates
-    Main --> Output : uses
-    Output --> EnergySupply : uses
-    Output --> EnergyStorage : uses
-    Output --> Load : uses
+    %% Inheritance
+    EnergySupply <|-- ConstantSupply
+    EnergySupply <|-- HarvestingSupply
+    EnergyStorage <|-- Capacitor
+    Load <|-- Resistor
+    Load <|-- MCU
+    PMIC <|-- BoostBuckPMIC
+    Interface <|-- Basic
+    Interface <|-- Mementos
+    Interface <|-- Hibernus
+    Interface <|-- UFoP
 
-    %% Energy Flow Dependencies
+    %% Composition
+    Input *-- EnergySupply
+    Input *-- EnergyStorage
+    Input *-- Load
+    Input *-- PMIC
+    Load *-- Program
+    Program *-- Operation
+    Program --> Interface : delegates execution to
+    Mementos *-- Snapshot
+    Hibernus *-- Snapshot
+
+    %% Usage
+    Main --> Input : creates
+    Main --> Simulator : calls
+    Main --> Output : calls
+    Simulator --> Input : reads
+    Output --> Simulator : receives result from
+
+    %% Energy Flow
     EnergyStorage ..> EnergySupply : receives energy from
-    Load ..> EnergyStorage : consumes energy from
+    EnergyStorage ..> Load : supplies energy to
+    PMIC ..> EnergySupply : mediates
+    PMIC ..> EnergyStorage : mediates
+    PMIC ..> Load : mediates
 ```

@@ -1,6 +1,6 @@
 # Simulation Input Configuration File
 
-This document describes how to prepare a configuration JSON file (`/src/input/files/config-*.json`) that will be loaded into the simulator.
+This document describes how to prepare a configuration JSON file (`src/input/files/config.json`) that will be loaded into the simulator.
 
 ## 1. Simulation Parameters
 
@@ -50,9 +50,9 @@ For example:
 }
 ```
 
-This will generate a **profile** attribute for the `ConstantSupply` class, which is a vector of size **duration** / **step**. Each simulation step will estimate an energy supply value of: 
+This will generate a **profile** attribute for the `ConstantSupply` class, which is a vector of size **duration** / **step**. Each simulation step will estimate an energy supply value of:
 
-$$E(t) =  \frac{profile[t]}{t_{\text{step}}}$$
+$$E(t) = profile[t] \times t_{\text{step}}$$
 
 #### 2.1.2 Harvesting (Generic)
 
@@ -63,7 +63,7 @@ The configuration parameters are:
 | Parameter | Type | Description |
 |---|---|---|
 | **type** | `string` | Type of supply, value is `"harvesting"`. |
-| **filename** | `string` | Path to the text file that contains the energy supply dataset. |
+| **profile_filepath** | `string` | Path to the pre-generated CSV file that contains the energy supply profile. |
 | **sampling_period** | `float` | Sampling period of the energy dataset (in seconds). |
 
 For example:
@@ -72,19 +72,17 @@ For example:
 {
   "supply":{
     "type": "harvesting",
-    "filename": "src/input/files/solar-data.txt",
-    "sampling_period": 2
+    "sampling_period": 0.5,
+    "profile_filepath": "src/eh/files/dataset-teg.csv"
   }
 }
 ```
 
-The user MUST include a text file containing the energy profile measurements gathered from a real Energy Harvesting source. The simulator will normalize this dataset from the provided **sampling_period** to the chosen simulation **step**.
-
-Public datasets of real Energy Harvesting measurements are readily available online, for example, [Long-Term Tracing of Indoor Solar Harvesting](https://zenodo.org/records/3363925).
+The **profile_filepath** must point to a CSV file pre-generated from a real Energy Harvesting dataset using the helper function `set_up_eh_supply_profile_file()` available in `src/input/input.py`. This only needs to be done once. Public datasets of real EH measurements are available online, for example, [Long-Term Tracing of Indoor Solar Harvesting](https://zenodo.org/records/3363925).
 
 The normalized data will be loaded into the **profile** attribute of the `HarvestingSupply` class, which is a vector of size **duration** / **step**. Each simulation step will estimate an energy supply value of:
 
-$$E(t) =  \frac{profile[t]}{t_{\text{step}}}$$
+$$E(t) = profile[t] \times t_{\text{step}}$$
 
 ### 2.2. Energy Storage
 
@@ -215,7 +213,9 @@ The list of default available operations are:
 | CPU | cpu_sleeping | `SLEEP` | CPU is in low-power mode sleeping. |
 | Task | sensing | `SENSE` | Reading sensor data in active power mode. |
 | Task | transmitting | `TX` | Transmitting communication packets in active power mode. |
-| Task | receiving | `RX` | Receiving communication packagers in active power mode. |
+| Task | receiving | `RX` | Receiving communication packets in active power mode. |
+| Control | checkpointing | `CHECKPOINT` | Triggers the active `Interface` to save program state to NVM. Only effective when the configured `interface` supports checkpointing (e.g. `"mementos"`, `"hibernus"`). |
+| Control | task_block | `TASK` | Marks the beginning of a task block. Only effective when the configured `interface` supports task-based execution (e.g. `"ufop"`). |
 
 The configuration parameters are:
 
@@ -245,27 +245,18 @@ Lastly, if the configured clock is smaller than the default (1ms) or greater tha
 
 ## 3.2. Program Script File
 
-In order to load a `Program` to the simulation, the user MUST include a script file that defines the program sequence they wish to execute. Each line of the script MUST be a code instruction followed by its consumption current in Ampere (cost). These two parameters are obligatory.
+In order to load a `Program` to the simulation, the user MUST include a script file that defines the program sequence they wish to execute. Lines starting with `#` are treated as comments and ignored.
 
-A third parameter may be added to the script, which is the operation's execution time (in milliseconds). An operation may have a well-defined duration or not, but if present, the duration MUST be at minimum the default **processing_clock** of 1ms. In addition, it is highly recommended that this duration be a multiple of the **processing_clock** whenever feasible, as to facilitate the operation processing.
+For standard operations (`PROC`, `SLEEP`, `SENSE`, `TX`, `RX`), each line MUST contain the code instruction and its consumption current in Ampere (cost). A third field — the operation's execution duration **in milliseconds** — is also required. The duration MUST be at minimum the default **processing_clock** of 1ms.
 
-For example, if we wish to execute the following software:
+For control operations:
+- `CHECKPOINT` lines have no additional fields. They mark a point where the active `Interface` may save state.
+- `TASK` lines also have no additional fields. They mark the start of a task block for task-based interfaces.
 
-```txt
-| Instruction | Cost (A) | Duration (s) |
-|-|-|-|
-| RX | 0.027 | 0.1025 |
-| PROC | 0.00192 | 0.0001 |
-| SLEEP | 0.000001 | 60.0 |
-| SENSE | 0.006 | 0.044 |
-| PROC | 0.00192 | 0.0001 | 
-| TX | 0.03 | 0.00057 |
-```
-> The sensing, transmitting and receiving tasks are based on the work done by [Climent et al](https://onlinelibrary.wiley.com/doi/full/10.1002/cpe.3151). The cpu_sleeping and cpu_processing costs are based on TI MSP430FR5994's CPU values.
-
-The input script file should be:
+For example, a basic program without state saving (`program01.txt`):
 
 ```txt
+# Instruction  Cost (A)   Duration (ms)
 RX      0.027     102.5
 PROC    0.00192   1
 SLEEP   0.000001  60000
@@ -274,7 +265,64 @@ PROC    0.00192   1
 TX      0.03      1
 ```
 
-## 4. PMIC: Power Management Integrated Circuit
+> The sensing, transmitting and receiving tasks are based on the work done by [Climent et al](https://onlinelibrary.wiley.com/doi/full/10.1002/cpe.3151). The cpu_sleeping and cpu_processing costs are based on TI MSP430FR5994's CPU values.
+
+A program with checkpointing for use with `"mementos"` or `"hibernus"` interfaces (`program02-v1.txt`):
+
+```txt
+SLEEP   0.000001  30000
+CHECKPOINT
+RX      0.027     102.5
+PROC    0.00192   1
+SLEEP   0.000001  10000
+CHECKPOINT
+SENSE   0.006     44
+PROC    0.00192   1
+SLEEP   0.000001  10000
+CHECKPOINT
+TX      0.03      1
+CHECKPOINT
+```
+
+A program with task blocks for use with task-based interfaces (`program03.txt`):
+
+```txt
+TASK
+  RX      0.027     102.5
+  PROC    0.00192   1
+TASK
+  SLEEP   0.000001  60000
+TASK
+  SENSE   0.006     44
+  PROC    0.00192   1
+TASK
+  TX      0.03      1
+```
+
+# 4. Hardware/Software Interface
+
+An `Interface` defines how the software and hardware components of the energy harvesting system interact, given the complexity of the architecture and unpredictable periods of power loss.
+
+Currently, it implements how the `MCU` Load and its `Program` handle power interruptions and state recovery. It is configured via the top-level `"interface"` field in the configuration JSON.
+
+This component is *optional*. If `"interface"` is absent, the simulator falls back to the `"basic"` interface by default.
+
+| Value | Class | Execution Model | Description |
+|---|---|---|---|
+| `"basic"` | `Basic` | None | Program resets fully on every power loss. Execution starts from the beginning when power is restored. |
+| `"mementos"` | `Mementos` | Checkpointing | Saves program state to NVM when a `CHECKPOINT` operation is reached and the supply voltage drops below a threshold. Restores state on power-up. Based on [Mementos](https://dl.acm.org/doi/10.1145/1961295.1950386). |
+| `"hibernus"` | `Hibernus` | Checkpointing | **[WIP]** Reactively saves the full program state to NVM when the supply voltage drops below a threshold, without requiring explicit `CHECKPOINT` instructions. Based on [Hibernus](https://ieeexplore.ieee.org/document/6960060). |
+| `"ufop"` | `UFoP` | Task-based | **[TBD]** Executes operations in `TASK` blocks, only starting a task if enough energy is available to complete it. Based on [UFoP](https://dl.acm.org/doi/10.1145/2809695.2809707). |
+
+The configuration is:
+
+```json
+{
+  "interface": "mementos"
+}
+```
+
+## 5. Power Management Integrated Circuit (PMIC)
 
 An `PMIC` component can be configured between the **Supply**, **Storage** and **Load**, to control the energy flow of the system more appropriately.
 
@@ -290,9 +338,7 @@ It has the following operating modes:
 - **"idle"** - energy flowing into **Storage** equals energy flowing out, buck converter is on.
 - **"full"** - stop charging **Storage** when it is full, buck converter is on, but boost charger is off.
 
-This component is *optional*. 
-
-If `"pmic"` is absent from the configuration JSON, the simulator falls back to the default connection model, where the raw storage voltage is supplied to the load.
+This component is *optional*. If `"pmic"` is absent from the configuration JSON, the simulator falls back to the default connection model, where the raw storage voltage is supplied to the load.
 
 The following `PMIC` types are available.
 
@@ -353,7 +399,7 @@ When applying the values from the *BQ25570* datasheet, the `PMIC` configuration 
 }
 ```
 
-## 4. Example of Complete Configuration File
+## 6. Example of Complete Configuration File
 
 ```json
 {
@@ -377,8 +423,8 @@ When applying the values from the *BQ25570* datasheet, the `PMIC` configuration 
     "v_boost_thresh": 1.8,
     "v_bat_ov": 5.5,
     "v_bat_uv": 1.8,
-    "v_bat_ok_low": 2.2,
-    "v_bat_ok_high": 5.5,
+    "v_bat_ok_low": 3.2,
+    "v_bat_ok_high": 5.2,
     "v_out_reg": 3.0,
     "mppt_efficiency": 0.95,
     "boost_efficiency": 0.80,
@@ -398,6 +444,7 @@ When applying the values from the *BQ25570* datasheet, the `PMIC` configuration 
   "program": {
     "filepath": "src/program/files/program01.txt",
     "processing_clock": 0.005
-  }
+  },
+  "interface": "basic"
 }
 ```
