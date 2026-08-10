@@ -52,6 +52,23 @@ To execute the simulation model, run:
 make run
 ```
 
+Output to CLI when executing the simulation.
+
+![Simulation output to terminal.](/docs/pictures/simulation_stdout.png)
+
+Output plot example of energy over time for all BEHS components.
+
+![Plot example of all components energy x time.](/docs/pictures/output_plot_example.png)
+
+Output plot example of a harvesting supply component's attributes over time.
+
+![Plot example of supply attributes x time.](/docs/pictures/output_plot_example2.png)
+
+Output plot example of a microcontroller load components's attributes over time.
+
+![Plot example of load attributes x time.](/docs/pictures/output_plot_example3.png)
+
+
 ### Cleaning cached files
 
 By default, Python generates several cache files after running code, tests or linter. To clean these cached files, run:
@@ -62,4 +79,4 @@ make clean
 
 ## Documentation
 
-Full project documentation, including the Wiki, can be found on the [docs](docs/) folder.
+Full project documentation, including the User Guide, can be found on the [docs](docs/) folder.
