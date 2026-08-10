@@ -1,8 +1,6 @@
-# BEHS Simulation Model
+# The Complete Guide
 
 # 1. Description
-
-> _**Warning:** The project is still under ongoing improvements. The equations that model system components might change in the future._
 
 Our project provides a simulation framework for analyzing and understanding the energy behaviour of **Battery-less Energy Harvesting Systems** (BEHS).
 
@@ -12,60 +10,10 @@ Users can use the implemented abstract classes inside the `src` folder to simula
 
 The following methods are available on `main.py`:
 
-- `run_manual()` - Loads configuration from `src/input/files/config.json`, runs the simulation and writes all outputs.
+- `run_manual()` - Loads input configuration, runs the simulation and writes all outputs.
 - **[WIP]**`run_ui()` - Opens a graphical input form (via `tkinter`) for configuring the simulation, then runs and writes all outputs.
 
-The following methods are available on module `output.py`:
-
-- `write_to_log()` - Writes simulation output to local log file, `output.log`.
-- `write_to_csv()` - Writes simulation output to local CSV file, `output.csv`.
-- `write_to_excel()` - Reads CSV file and writes output to local Excel file, `output.xlsx`.
-- `plot()` - Reads Excel file and plots the output.
-   - It provides three default types of plotting methods.
-   - Users can update the file to create their own, and add them to the `plot()` method.
-
-# 2. System Scenarios
-
-## Positive Scenario A
-
-A researcher configures the simulation model to compare different energy sources for a wireless temperature monitoring system. 
-
-The first application uses a solar panel as the energy supply, a supercapacitor as the storage, a boost-buck as power management integrated circuit (PMIC), and a microcontroller (MCU) as the load. The interface they have chosen is the most basic one. The time window is a 24-hour simulation with an interval of 1 minute. The goal is to observe daily solar energy cycles. 
-
-For example, the results show that during the day (with constant voltage), the supercapacitor charges efficiently and powers the MCU correctly. Visualization graphs display the MCU's average energy consumption in constrast to the supercapacitor's capacity. This may help to determine the best supercapacitor size needed for operating the application at night. 
-
-Next, the researcher tests a wind energy harvester and compares the output with the solar harvester. This may help them select the optimal energy source for their system.
-
-## Positive Scenario B
-
-A student wants to analyze how different embedded software may impact the same energy storage and load. 
-
-Using the simulation model, they implement their custom MCU component, by inheriting from the Load base class.
-They simulate voltage, current and energy consumption values for an MCU with peripherals. Then, they write a program file to execute on that MCU, that periodically wakes, measures data, transmits it, and returns to sleep.
-
-By changing the energy consumption values (i.e. changing for how long the MCU sleeps or sends the data) for different simulations, the user can compare the different outputs and graphs. The results show how differing a programs's energy consumption behaviour affects the capacitor's charging and discharging cycles. 
-
-This may help the student select a suitable storage component for their chosen load.
-
-## Negative Scenario A
-
-A researcher wants to simulate a system with a solar panel and a wind turbine generator working together as the total energy supply.
-
-But, when they try to run the output functions in `main.py`, passing two energy supply components as parameters, they realise the code doesn't work. This happens because, as of now, the simulation only supports one supply, one storage, and one load at a time to configure the input data.
-
-The researcher realizes that to run the simulation with multiple components of the same type would require updating a lot of the core code.
-
-In the end, they have to run the simulation twice (once for each supply) and combine the results themselves.
-
-## Negative Scenario B
-
-A student attempts to simulate a wireless sensor network, where each node periodically transmits and receives data, and then enters a deep sleep mode.
-
-However, they notice that the simulator does not support a load "network" with multiple nodes. Current implementation only works for a single endpoint load device, such as a resistor or a microcontroller (MCU). This means the simulation does not work for a node composed of multiple devices (a node is MCU + peripherals) or a network of multiple nodes.
-
-The student would need to implement this support themselves.
-
-# 3. Technical Documentation
+# 2. Technical Documentation
 
 ## About
 
@@ -96,11 +44,11 @@ The `src` folder is organized into the following packages.
    - `energystorage.py` - extends abstract class `EnergyStorage` to implement `Capacitor`.
    - `load.py` - extends abstract class `Load` to implement `Resistor` and `MCU`.
    - `pmic.py` - extends abstract class `PMIC` to implement `BoostBuckPMIC`.
-- `interface/` - Defines the `Interface` abstract class and its implementations (`Basic`, `Mementos`, `Hibernus`), which functions as a control mechanism between the system's hardware and software.
-   - As of now, we only have a mechanism for program execution control, i.e. how the `Load` and `Program` handle power interruptions and state recovery.
+- `interface/` - Defines the `Interface` abstract class and its implementations (`Basic`, `Mementos`, `Hibernus`). It functions as a control mechanism between the system's hardware and software.
+   - As of now, interfaces only have mechanisms for program execution control, i.e. how the `Load` and `Program` handle power interruptions and state recovery.
    - In the future, we hope to add mechanisms for the energy storage's charge management as well.
 
-This package structure allows users to easily extend the `behs` abstract classes and define new components, for example:
+This package structure allows users to easily extend the `behs` and `interface` abstract classes and define new system components, for example:
 
 ```python
 # Class Load for the BEHS simulation model
@@ -129,39 +77,32 @@ class MCUPeripherals(Load):
 - `eh/` - Provides utilities for parsing real Energy Harvesting datasets (e.g. HDF5 or CSV files) into a format suitable for the `EnergySupply` class (if applicable).
 - `program/` - Provides utilities for parsing software programs that will be executed by the `Load` class (if applicable). Expects program code to be in a text file format (e.g. `src/program/files/program01.txt`).
 - `simulator/` - Contains the function for executing the simulation for the given configurations.
-- `output/` - Handles simulation output, such as writing to log, CSV and Excel files, and plotting results.
+- `output/` - Handles simulation output and visualization metrics. It provides three default types of plotting methods. Users can update `output.py` to create new metrics and add them to the `plot()` method.
 - **[WIP]** `ui/` - Handles simulation configuration from a user-interface using *tkinter* and integrating with the `input/` package.
+
+The `input` module (`src/input/input.py`) reads the configuration JSON file in `src/input/files/config.json` and instantiates all components. The `simulator` module (`src/simulator/simulator.py`) calls the `run()` function to execute the simulation and returns its output. This output data is then processed by the `output` module (`src/output/output.py`).
 
 The simulation is run via `main.py` using the `run_manual()` function. 
 
 ```python
 def run_manual():
-    # Initializes the simulation input configuration
+    # Get input configuration
     config = inp.load_config_from_file(inp.CONFIG_FILE_PATH)
-
-    # Uncomment to generate "profile_filepath" file for EnergySupply (when applicable)
-    # File only needs to be generated once, and can be reused for all simulations.
-    # inp.set_up_eh_supply_profile_file(config.get("supply"))
-
     sim_input = inp.Input(config)
 
-    # Run simulation for given input params
+    # Execute simulation and return output
     sim_output = simulator.run(sim_input)
 
-    # Write output to local log file, 'output.log'
+    # Expose output metrics
     out.write_to_log(sim_output)
-
-    # Write output to local CSV file, 'output.csv'
     out.write_to_csv(sim_output)
-
-    # Formats CSV and writes output to local Excel file, 'output.xlsx'
     out.write_to_excel()
-
-    # Reads Excel file and plots the output
     out.plot()
-```
 
-The `input` module (`src/input/input.py`) reads the configuration JSON file in `src/input/files/config.json` and instantiates all components. The `simulator` module (`src/simulator/simulator.py`) calls the `run()` function to execute the simulation and returns its output. This output data is then processed by the `output` module (`src/output/output.py`).
+def main():
+    # Uncomment the line below to run the simulation with a manual configuration
+    run_manual()
+```
 
 ## Class Diagram
 
@@ -511,7 +452,7 @@ The `output` module handles data export and visualization by:
 - Creating multiple plot types for analysis.
 - Supporting customizable visualization options.
 
-# 4. User Guide
+# 3. User Guide
 
 ## Installation and Setup
 
@@ -628,3 +569,45 @@ step,time,component,status,voltage,current,energy,power,total_energy_consumed,pr
   make run
   ```
 7. The updated plots will be displayed.
+
+
+# 4. System Scenarios
+
+## Positive Scenario A
+
+A researcher configures the simulation model to compare different energy sources for a wireless temperature monitoring system. 
+
+The first application uses a solar panel as the energy supply, a supercapacitor as the storage, a boost-buck as power management integrated circuit (PMIC), and a microcontroller (MCU) as the load. The interface they have chosen is the most basic one. The time window is a 24-hour simulation with an interval of 1 minute. The goal is to observe daily solar energy cycles. 
+
+For example, the results show that during the day (with constant voltage), the supercapacitor charges efficiently and powers the MCU correctly. Visualization graphs display the MCU's average energy consumption in constrast to the supercapacitor's capacity. This may help to determine the best supercapacitor size needed for operating the application at night. 
+
+Next, the researcher tests a wind energy harvester and compares the output with the solar harvester. This may help them select the optimal energy source for their system.
+
+## Positive Scenario B
+
+A student wants to analyze how different embedded software may impact the same energy storage and load. 
+
+Using the simulation model, they implement their custom MCU component, by inheriting from the Load base class.
+They simulate voltage, current and energy consumption values for an MCU with peripherals. Then, they write a program file to execute on that MCU, that periodically wakes, measures data, transmits it, and returns to sleep.
+
+By changing the energy consumption values (i.e. changing for how long the MCU sleeps or sends the data) for different simulations, the user can compare the different outputs and graphs. The results show how differing a programs's energy consumption behaviour affects the capacitor's charging and discharging cycles. 
+
+This may help the student select a suitable storage component for their chosen load.
+
+## Negative Scenario A
+
+A researcher wants to simulate a system with a solar panel and a wind turbine generator working together as the total energy supply.
+
+But, when they try to run the output functions in `main.py`, passing two energy supply components as parameters, they realise the code doesn't work. This happens because, as of now, the simulation only supports one supply, one storage, and one load at a time to configure the input data.
+
+The researcher realizes that to run the simulation with multiple components of the same type would require updating a lot of the core code.
+
+In the end, they have to run the simulation twice (once for each supply) and combine the results themselves.
+
+## Negative Scenario B
+
+A student attempts to simulate a wireless sensor network, where each node periodically transmits and receives data, and then enters a deep sleep mode.
+
+However, they notice that the simulator does not support a load "network" with multiple nodes. Current implementation only works for a single endpoint load device, such as a resistor or a microcontroller (MCU). This means the simulation does not work for a node composed of multiple devices (a node is MCU + peripherals) or a network of multiple nodes.
+
+The student would need to implement this support themselves.

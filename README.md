@@ -79,4 +79,29 @@ make clean
 
 ## Documentation
 
-Full project documentation, including the User Guide, can be found on the [docs](docs/) folder.
+Refer to the appropriate documentation file based on your needs.
+
+- [**README.md**](../README.md) - Explains the initial setup for the repository and the available Makefile commands.
+- [**CONFIGURATION.md**](/docs/CONFIGURATION.md) - Explains how to configure and customize the simulation input parameters.
+- [**WIKI.md**](/docs/WIKI.md) - Comprehensive guide about the project, including the complete technical documentation and the user guide.
+
+## Contributing
+
+The intended use for this project is to help researchers and students to emulate EH applications and assist in early-stage system design.
+
+However, as this is an open-source project, we encourage and support any community contributions! Feel free to report bugs, recommend improvements and implement new features. Repository mantainers are keeping an eye on opened issues and pull requests.
+
+The recommended workflow for contributions is through [forking](https://docs.github.com/en/get-started/exploring-projects-on-github/contributing-to-a-project), in cause you don't have permission to make changes directly. 
+
+If you do plan to clone and push directly to the repository, make sure to follow these instructions.
+
+1. Create a new branch to work on. Branching from `main` is allowed.
+2. Follow the code style of the project, including indentation and in-code comments.
+3. Always keep the tests and documentation updated as you make changes.
+4. Commit messages are recommended to follow the [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) syntax.
+5. When opening a PR, use the template available [here](.github/workflows/pull_request_template.md). Review and approval from other contributors is recommended, but not mandatory. We suggest avoiding AI reviewers on PRs, e.g. Copilot.
+6. Before merging a PR into `main`, check if the `pylint` and `pytest` workflow jobs have passed. Also, we highly recommend squashing your commits. It helps to keep the repository's commit history clean.
+
+## License
+
+Released under the [MIT License](/LICENSE).

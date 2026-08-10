@@ -1,4 +1,4 @@
-# Simulation Input Configuration File
+# Simulation Input Configuration
 
 This document describes how to prepare a configuration JSON file (`src/input/files/config.json`) that will be loaded into the simulator.
 
