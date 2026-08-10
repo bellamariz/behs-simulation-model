@@ -93,17 +93,22 @@ class Program:
 
     # Print Program object
     def print(self):
-        print(f"=== Program to be executed: {self.FILEPATH} ===")
+        print(f"===== Program Info =====")
         print(
-            f"processing_clock={self.PROCESSING_CLOCK}, tick_model={self.TICK_MODEL}, interface={self.interface.name}, program_model={self.interface.program_execution_model}")
-        print("operations=")
+            f"  File: {self.FILEPATH},\n"
+            f"  Processing Clock: {self.PROCESSING_CLOCK}s,\n"
+            f"  Tick Model: '{self.TICK_MODEL}',\n"
+            f"  Interface Type: '{self.interface.name}',\n"
+            f"  Program Execution Model: '{self.interface.program_execution_model}',\n"
+            f"  Operations:"
+        )
         self.print_operations()
 
     # Print operations list of the Program object
     def print_operations(self):
         for i, op in enumerate(self.operations):
             print(
-                f"  #{i} | name={op.name}, inst={op.instruction}, cost={op.cost:.6f}A, duration={op.duration*1000:.2f}ms, ticks={op.ticks_needed}")
+                f"    #{i} | name={op.name}, inst={op.instruction}, cost={op.cost:.6f}A, duration={op.duration*1000:.2f}ms, ticks={op.ticks_needed}")
 
     # Reset program execution if program does not save state and Load loses power
     def reset(self):
