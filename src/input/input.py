@@ -69,11 +69,34 @@ def load_config_from_ui(values):
 # The Input class configures all the simulation parameters
 class Input:
     def __init__(self, config: dict):
+        self.t_step: float = None
+        self.t_vector: list = None
+        self.supply: supply.EnergySupply = None
+        self.storage: storage.EnergyStorage = None
+        self.load: load.Load = None
+        self.pmic: pmic.PMIC = None
+        self.interface: interface.Interface = None
+
         self._init_simulation_params(config)
         self._init_behs_params(config)
         if self.load.type in _UPLOAD_SOFTWARE_REGISTRY:
             self._init_interface_params(config)
             self._init_program_params(config)
+
+        self.print()
+
+    def print(self):
+        print("===== Simulation Parameters =====")
+        print(f"  Step: {self.t_step}s")
+        print(f"  Duration: {self.t_vector[-1]}s")
+        print("===== BEHS Parameters =====")
+        print(f"  Supply Type: '{self.supply.type}'")
+        print(f"  Storage Type: '{self.storage.type}'")
+        if self.pmic is not None:
+            print(f"  PMIC Type: '{self.pmic.type}'")
+        print(f"  Load Type: '{self.load.type}'")
+        if self.load.program is not None:
+            self.load.program.print()
 
     # Initialize simulation parameters
     def _init_simulation_params(self, config: dict):
@@ -115,7 +138,6 @@ class Input:
         self.load = _LOAD_REGISTRY[load_type](load_cfg)
 
         # PMIC (if applicable)
-        self.pmic = None
         pmic_cfg = config.get("pmic")
         if pmic_cfg is not None:
             pmic_type = pmic_cfg.get("type")
@@ -128,7 +150,6 @@ class Input:
         if interface_cfg is None:
             print("Warning: No interface provided, using default 'basic' interface.")
             interface_cfg = "basic"
-
         self.interface = _INTERFACE_REGISTRY[interface_cfg]()
 
     def _init_program_params(self, config: dict):
@@ -160,5 +181,4 @@ class Input:
         # Parse Program object from file and upload to the Load
         prog = program.Program(
             program_file, self.interface, cpu_active_cost, cpu_standby_cost, cpu_shutdown_cost, program_clock)
-        prog.print()
         self.load.upload_software(prog)

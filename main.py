@@ -13,9 +13,10 @@ def run_manual():
     # File only needs to be generated once, and can be reused for all simulations.
     # inp.set_up_eh_supply_profile_file(config.get("supply"))
 
+    # Initializes the simulation input configuration
     sim_input = inp.Input(config)
 
-    # Run simulation for given input params
+    # Run simulation for given input
     sim_output = simulator.run(sim_input)
 
     # Write output to local log file, 'output.log'
