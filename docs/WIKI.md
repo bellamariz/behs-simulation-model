@@ -606,9 +606,11 @@ step,time,component,status,voltage,current,energy,power,total_energy_consumed,pr
   - `step`: Simulation time index.
   - `time`: Actual time value (seconds).
   - `component`: Component type (`supply`/`storage`/`load`).
+  - `status`: Component status (active, stand-by, off, etc).
   - `voltage`: Voltage value (Volts).
   - `current`: Current value (Amperes).
   - `energy`: Energy value (Joules) - stored for `storage` component, consumed for `load` component and collected and supplied for `supply` component.
+  - `power`: Power value (Watts) - stored for `storage` component, consumed for `load` component and collected and supplied for `supply` component.
   - `total_energy_consumed`: Cumulative energy consumed (Joules) - only applicable to `load` component.
   - `program_executed_ops`: The list of executed `program` operations during the simulation.
 
