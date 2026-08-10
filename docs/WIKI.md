@@ -25,13 +25,13 @@ A **Battery-less Energy Harvesting System** (BEHS) is an IoT-based solution norm
 
 A BEHS can be decomposed into three sub-systems:
 
-- The *Harvesting Circuit* captures ambient energy and converts it into electrical energy (e.g. solar, wind, mechanical).
+- The *Energy Supply* (i.e. harvesting circuit) captures ambient energy and converts it into electrical energy (e.g. solar, wind, mechanical).
 - The *Energy Storage* stores excess energy for later use by the system (e.g. capacitors).
 - The *Load* is the device being powered (e.g. microcontroller, peripherals).
 
-A fourth component, a *Power Management Integrated Circuit* (PMIC), may also be present, since it helps to control the energy flow between these three sub-systems more efficiently.
+An additional component, a *Power Management Integrated Circuit* (PMIC), may also be present, since it helps to control the energy flow between these storage and load more efficiently.
 
-![Energy Harvesting Architecture](docs/eh-architecture.png)
+![Energy Harvesting Architecture](eh-architecture.png)
 
 ## Project Architecture
 

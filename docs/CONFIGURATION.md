@@ -374,9 +374,9 @@ Additional parameters for the `PMIC` class can be defined by the user to account
 
 With these parameteres, the energy flow equations are:
 
-$$E_{\text{to\_storage}} = E_{\text{supply}} \times \eta_{\text{mppt}} \times \eta_{\text{boost}}$$
+$$E_{\text{toStorage}} = E_{\text{supply}} \times \eta_{\text{mppt}} \times \eta_{\text{boost}}$$
 
-$$E_{\text{from\_storage}} = \frac{E_{\text{load}}}{\eta_{\text{buck}}}$$
+$$E_{\text{fromStorage}} = \frac{E_{\text{load}}}{\eta_{\text{buck}}}$$
 
 When applying the values from the *BQ25570* datasheet, the `PMIC` configuration is:
 
