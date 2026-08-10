@@ -7,8 +7,10 @@ import matplotlib.pyplot as plt
 def write_to_log(sim_output):
     with open("output.log", "w", encoding="utf-8") as logfile:
         print("Simulation started", file=logfile)
+
+        step = 0
         for t, data in sim_output.items():
-            print(f"Time step {t}: t={t:.3f}s\n", file=logfile)
+            print(f"Time step {step}: t={t:.3f}s\n", file=logfile)
             print(
                 f"  Supply: type={data['supply']['type']}, energy={data['supply']['energy_supply']:.7f}J, power={data['supply']['power_supply']:.7f}W", file=logfile)
             print(
@@ -26,6 +28,8 @@ def write_to_log(sim_output):
                 f"  Storage: type={data['storage']['type']}, status={data['storage']['status']}, voltage={data['storage']['voltage']:.5f}V, current={data['storage']['current']:.7f}A, energy={data['storage']['energy_stored']:.7f}J, power={data['storage']['power_stored']:.7f}W\n", file=logfile)
             print("-" * 50, file=logfile)
 
+            step += 1
+
 
 # Main function to write the output of the simulation to a CSV file
 def write_to_csv(sim_output):
@@ -35,6 +39,7 @@ def write_to_csv(sim_output):
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
+        step = 0
         for t, data in sim_output.items():
             program_executed_ops = "NaN"
             if data['load']['program_executed_ops']:
@@ -44,7 +49,7 @@ def write_to_csv(sim_output):
                 )
 
             writer.writerow({
-                "step": t,
+                "step": step,
                 "time": t,
                 "component": "supply",
                 "status": "NaN",
@@ -53,10 +58,10 @@ def write_to_csv(sim_output):
                 "power": data['supply']['power_supply'],
                 "energy": data['supply']['energy_supply'],
                 "total_energy_consumed": "NaN",
-                "program_executed_ops": program_executed_ops,
+                "program_executed_ops": "NaN",
             })
             writer.writerow({
-                "step": t,
+                "step": step,
                 "time": t,
                 "component": "storage",
                 "status": data['storage']['status'],
@@ -65,10 +70,10 @@ def write_to_csv(sim_output):
                 "power": data['storage']['power_stored'],
                 "energy": data['storage']['energy_stored'],
                 "total_energy_consumed": "NaN",
-                "program_executed_ops": program_executed_ops,
+                "program_executed_ops": "NaN",
             })
             writer.writerow({
-                "step": t,
+                "step": step,
                 "time": t,
                 "component": "load",
                 "status": data['load']['mode'],
@@ -79,6 +84,8 @@ def write_to_csv(sim_output):
                 "total_energy_consumed": data['load']['total_energy_consumed'],
                 "program_executed_ops": program_executed_ops,
             })
+
+            step += 1
 
 
 # Main function to write the output of the simulation to an Excel file

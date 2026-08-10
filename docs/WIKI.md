@@ -603,7 +603,7 @@ For setting up instructions, check the [README.md](../README.md).
 **Explaining the attributes:**
 The generated Excel file (`output.xlsx`) will have the columns below, which will be used for plotting:
 step,time,component,status,voltage,current,energy,power,total_energy_consumed,program_executed_ops
-  - `step`: Simulation time index.
+  - `step`: Simulation time index (integer).
   - `time`: Actual time value (seconds).
   - `component`: Component type (`supply`/`storage`/`load`).
   - `status`: Component status (active, stand-by, off, etc).
