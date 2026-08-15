@@ -196,7 +196,7 @@ direction TB
         +current_op_remaining_ticks: int
         +current_op_remaining_seconds: float
         +executed_ops_last_step: dict
-        +Program(filepath, interface, cpu_active_cost, cpu_standby_cost, cpu_shutdown_cost, processing_clock, tick_model = CLOCK_TICK_MODEL_FLOAT)
+        +Program(filepath, interface, processing_clock, tick_model, ...)
         +print_operations() void
         +get_cost_for_t_step(t_step: float, v_supply: float) float
         +reset() void
