@@ -274,24 +274,6 @@ direction TB
         -_snapshot: Snapshot
     }
 
-    class Hibernus {
-        +name: str = "Hibernus"
-        +program_execution_model: str = "CHECKPOINTING"
-        +program_saves_state: bool = true
-        +NVM_COST_ACTIVE: float
-        +V_THRESH_HIBERNATE: float
-        +V_THRESH_RESTORE: float
-        -_is_hibernating: bool
-        -_is_snapshot_saved: bool
-        -_snapshot: Snapshot
-    }
-
-    class UFoP {
-        +name: str = "UFoP"
-        +program_execution_model: str = "TASK-BASED"
-        +program_saves_state: bool = false
-    }
-
     %% Supporting Classes
     class Program {
         +FILEPATH: str
@@ -387,36 +369,34 @@ direction TB
     }
 
     %% Inheritance
-    EnergySupply <|-- ConstantSupply
-    EnergySupply <|-- HarvestingSupply
-    EnergyStorage <|-- Capacitor
-    Load <|-- Resistor
-    Load <|-- MCU
-    PMIC <|-- BoostBuckPMIC
-    Interface <|-- Basic
-    Interface <|-- Mementos
-    Interface <|-- Hibernus
-    Interface <|-- UFoP
+    EnergySupply <|-- ConstantSupply : inherits
+    EnergySupply <|-- HarvestingSupply : inherits
+    EnergyStorage <|-- Capacitor : inherits
+    Load <|-- Resistor : inherits
+    Load <|-- MCU : inherits
+    PMIC <|-- BoostBuckPMIC : inherits
+    Interface <|-- Basic : inherits
+    Interface <|-- Mementos : inherits
 
     %% Composition
-    Input *-- EnergySupply
-    Input *-- EnergyStorage
-    Input *-- Load
-    Input *-- PMIC
-    Load *-- Program
-    Program *-- Operation
-    Program --> Interface : delegates execution to
-    Mementos *-- Snapshot
-    Hibernus *-- Snapshot
-    EnergySupply *--> TEGDataHDF5Parser : imports
+    Input *--> EnergySupply : creates
+    Input *--> EnergyStorage : creates
+    Input *--> Load : creates
+    Input *--> PMIC : creates
+    Input *--> Program : creates
+    Input *--> Interface : creates
+    Load *--> Program : contains
+    Program *--> Operation : is composed of
+    Program *--> Interface : is controlled by
+    Mementos *--> Snapshot : contains
+    EnergySupply *--> TEGDataHDF5Parser : uses
 
     %% Usage
     Main --> Input : creates
     Main --> Simulator : calls
-    Main --> Output : calls
+    Main --> Output : generates
     Simulator --> Input : reads
-    Output --> Simulator : receives result from
-    Input *-- Interface
+    Output --> Simulator : reads
 
     %% Energy Flow
     EnergyStorage ..> EnergySupply : receives energy from
