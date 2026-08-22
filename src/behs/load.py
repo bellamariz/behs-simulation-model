@@ -76,7 +76,7 @@ class Resistor(Load):
 
         # Inherited attributes
         self.type = config.get("type")
-        self.mode = "on"
+        self.mode = "off"
         self.v_on = min(self.V_OPER, self.V_MAX)
         self.voltage = 0.0
         self.current = 0.0
@@ -106,6 +106,11 @@ class Resistor(Load):
         super().upload_software(program)
 
     def refresh(self, v_supply, t_step):
+        if v_supply >= self.v_on:
+            self.mode = "on"
+        else:
+            self.mode = "off"
+
         super().refresh(v_supply, t_step)
 
     def print(self, t_index, file):
