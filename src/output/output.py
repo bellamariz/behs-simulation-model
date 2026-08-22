@@ -15,7 +15,7 @@ def write_to_log(sim_output):
                 f"  Supply: type={data['supply']['type']}, energy={data['supply']['energy_supply']:.7f}J, power={data['supply']['power_supply']:.7f}W", file=logfile)
             print(
                 f"  Load: type={data['load']['type']}, status={data['load']['mode']}, voltage={data['load']['voltage']:.5f}V, current={data['load']['current']:.7f}A, energy={data['load']['energy_consumed']:.7f}J, total_energy_consumed={data['load']['total_energy_consumed']:.7f}J", file=logfile)
-            if data['load']['program_executed_ops']:
+            if 'program_executed_ops' in data['load']:
                 ops_str = ", ".join(
                     f"{instruct}:{secs:.4f}s"
                     for instruct, secs in data['load']['program_executed_ops'].items()
@@ -42,7 +42,7 @@ def write_to_csv(sim_output):
         step = 0
         for t, data in sim_output.items():
             program_executed_ops = "NaN"
-            if data['load']['program_executed_ops']:
+            if 'program_executed_ops' in data['load']:
                 program_executed_ops = ",".join(
                     f"{instruct}:{secs:.4f}s"
                     for instruct, secs in data['load']['program_executed_ops'].items()
